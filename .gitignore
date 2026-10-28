@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Secrets — never commit
+credentials.json
+token.json
+.env
+
+# Generated (data/processed/ IS committed — the CSV is a graded deliverable)
+output/
+
+# Claude-drafted commit/PR messages
+.pr-drafts/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

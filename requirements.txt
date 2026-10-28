@@ -1,0 +1,19 @@
+# Bayesian network + data
+pgmpy>=0.1.26
+numpy>=1.26
+pandas>=2.1
+networkx>=3.2
+matplotlib>=3.8
+
+# Calendar
+google-api-python-client>=2.100
+google-auth-oauthlib>=1.1
+google-auth-httplib2>=0.2
+icalendar>=5.0
+
+# Dashboard
+fastapi>=0.110
+uvicorn>=0.27
+
+# Dev
+pytest>=8.0

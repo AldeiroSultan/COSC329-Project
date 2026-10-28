@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bayesian Study Planner</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Bayesian Study Planner</h1>
+    <select id="scenario-select" aria-label="Load a scenario">
+      <option value="">Load a scenario…</option>
+    </select>
+  </header>
+
+  <main>
+    <!-- TODO(MF-00007): inputs for 3 concept difficulties, quiz results, sleep, exam date -->
+    <form id="plan-form" class="card">
+      <h2>Student today</h2>
+      <div id="concept-inputs"></div>
+      <label>Sleep last night
+        <select name="sleep"><option value="">unknown</option><option>poor</option><option>good</option></select>
+      </label>
+      <label>Exam date <input type="date" name="exam_date" required></label>
+      <button type="submit">Plan today</button>
+    </form>
+
+    <section class="card">
+      <h2>What the network believes</h2>
+      <canvas id="posterior-chart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2>Expected utility per action</h2>
+      <canvas id="eu-chart"></canvas>
+      <p id="best-action" class="best"></p>
+    </section>
+
+    <section class="card">
+      <h2>Calendar</h2>
+      <div id="calendar"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

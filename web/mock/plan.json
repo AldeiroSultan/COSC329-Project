@@ -1,0 +1,18 @@
+{
+  "posteriors": {
+    "p_mastery_high": {"C1": 0.06, "C2": 0.06, "C3": 0.06},
+    "p_stress_high": 0.80,
+    "p_pass": 0.08
+  },
+  "expected_utility": {"intense": 22.4, "focused": 16.4, "light": 21.8, "rest": 11.7},
+  "best_action": "intense",
+  "target_concept": "C1",
+  "events": [
+    {
+      "summary": "[BayesPlanner] Intense 5-hour mandatory study block",
+      "start": "2026-11-05T10:00:00",
+      "end": "2026-11-05T15:00:00",
+      "description": "Exam in 2 days. P(pass) now 0.08."
+    }
+  ]
+}
