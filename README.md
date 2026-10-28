@@ -16,7 +16,7 @@ light 1h review / rest day) and writes it to Google Calendar or an `.ics` file.
 
 | Part | Tool |
 |---|---|
-| Language | Python 3.11–3.13 |
+| Language | Python 3.11+ (tested on 3.14) |
 | Bayes net, inference | [pgmpy](https://pgmpy.org) (`TabularCPD`, `VariableElimination`) |
 | Data simulation / CSV | numpy, pandas |
 | CPT learning | own Laplace-smoothed counting (checked against pgmpy `BayesianEstimator`) |
@@ -28,7 +28,7 @@ light 1h review / rest day) and writes it to Google Calendar or an `.ics` file.
 ## Setup (Windows)
 
 ```bash
-py -3.12 -m venv .venv
+python -m venv .venv
 ```
 ```bash
 .venv\Scripts\activate
@@ -40,8 +40,8 @@ pip install -r requirements.txt
 python -m pytest -q
 ```
 
-If pgmpy (or torch, which it pulls in) fails to install on Python 3.14, use
-Python 3.12 for the venv as above.
+Tested with Python 3.14 on Windows. If pgmpy fails to install on your Python
+version, install Python 3.12 and use `py -3.12 -m venv .venv` instead.
 
 ## Usage
 

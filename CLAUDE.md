@@ -10,33 +10,40 @@ decides today's study action and writes it to a calendar (Google Calendar API / 
 * `study_planner/config.py` — every number from MODEL.md lives here. Never hard-code
   states or numbers elsewhere.
 
-## "Please do branch XX-0000N" — the workflow
+## "Please do MF-0000N" — the workflow
 
-When a teammate says *"Please do branch MF-00003"* (or any `MF-0000N` / `TI-0000N`):
+When a teammate says *"Please do MF-00003"* / *"Please do branch MF-00003"* (or any
+`MF-0000N` / `TI-0000N`), Claude **only makes file changes**. The teammate commits,
+pushes and opens the PR from VS Code / GitHub.
 
 1. **Find the spec** for that branch in `docs/PLAN.md` → "Branch specs". If it
    isn't there, stop and ask.
-2. **Get on the branch and up to date** (allowed: these only touch the local checkout):
-   ```
-   git fetch origin
-   git checkout <BRANCH>            # or: git checkout -b <BRANCH> origin/staging if it doesn't exist locally
-   git merge staging                # or origin/staging; pulls in finished work
-   ```
-   If the merge conflicts, stop and explain the conflict instead of resolving guesses.
-   Check the spec's "Depends on" branches are already in staging; if not, warn the user.
+2. **Make sure we're on the right branch.** Run `git status --short --branch`.
+   * If the working tree has uncommitted changes from another branch, stop and
+     tell the user (don't stash or discard their work).
+   * If not on `<BRANCH>`, switch to it and bring it up to date:
+     ```
+     git fetch origin
+     git checkout <BRANCH>            # or: git checkout -b <BRANCH> origin/staging if it doesn't exist
+     git merge origin/staging         # falls back to local staging if no remote branch yet
+     ```
+     Tell the user which branch they were on and that you moved them.
+   * If the merge conflicts, stop and explain the conflict instead of guessing.
+   * Check the spec's "Depends on" branches are already in staging; if not, warn the user.
 3. **Implement** everything in the spec. Replace `raise NotImplementedError` stubs,
    keep the existing function names/signatures (other branches rely on them),
    remove `pytest.mark.skip` from the tests the spec names and make them pass.
-4. **Verify**: `python -m pytest -q` must pass. Run the CLI command the spec
+4. **Verify**: `.venv\Scripts\python -m pytest -q` must pass. Run the CLI command the spec
    mentions and include its output summary in the PR message.
 5. **Docs**: fill the `docs/REPORT.md` section the spec names; if you changed any
    number in `config.py`, update `docs/MODEL.md` too.
-6. **Write the messages** to `.pr-drafts/<BRANCH>.md` (git-ignored) using the
-   template below, and also print them in the chat.
-7. **Do NOT** `git add`, `git commit`, `git push`, open PRs, or merge. The
-   teammate does that by copy-pasting.
+6. **Leave everything uncommitted** so it shows up in VS Code's Source Control
+   panel. **Never** `git add`, `git commit`, `git push`, open PRs, or merge.
+7. **Reply in chat** with the commit message and the PR message (template below)
+   in separate code blocks, ready to copy-paste. Also save them to
+   `.pr-drafts/<BRANCH>.md` (git-ignored) as a backup.
 
-## Commit / PR message template (`.pr-drafts/<BRANCH>.md`)
+## Commit / PR message template
 
 ````markdown
 ## Commit message
