@@ -64,8 +64,57 @@ Stress, Sleep, ExamSuccess) are re-learned from simulated data, and the two
 versions are compared.
 
 ## 3. Data source / simulation
-_(MF-00002)_ Why simulated, the generating functions, N, seed, parent-configuration
-counts showing > 10 rows per learned parameter.
+
+**Why simulated.** We could not find a public dataset that records, for the same
+student, per-concept mastery, practice-quiz results, stress, sleep and exam outcome.
+So we generate **5,000 synthetic students** with a documented mathematical process
+(`study_planner/simulate_data.py`, fixed seed `329`, reproducible). The result is
+`data/processed/students.csv` (regenerate with `python -m study_planner.cli simulate`).
+
+**Columns.** `student_id`, the 13 network variables (`Difficulty_C1..3`,
+`Mastery_C1..3`, `Quiz_C1..3`, `DaysLeft`, `Stress`, `Sleep`, `ExamSuccess`), plus the
+raw `days_until_exam` (1–21) that `DaysLeft` is bucketed from. All state names match
+the network exactly.
+
+**Generative process.** `σ(z) = 1/(1+e^-z)`; `d` = difficulty index (easy 0, medium 1, hard 2);
+`k` = number of mastered concepts.
+
+| Variable | How it is generated |
+|---|---|
+| Difficulty_Ci | Categorical: easy .3, medium .4, hard .3 |
+| Mastery_Ci = high | Bernoulli(σ(1.4 − 1.3·d)) |
+| Quiz_Ci = high | Bernoulli(.85 if mastered, .20 if not), plus N(0, .03) noise on that probability |
+| days_until_exam | Uniform integer 1..21; DaysLeft = few (≤3), some (4–10), many (>10) |
+| Stress = high | Bernoulli(σ(1.6 − 0.18·days)) |
+| Sleep = poor | Bernoulli(.65 if stress high, .25 if low) |
+| ExamSuccess = pass | Bernoulli(σ(−2.2 + 1.6·k − 0.6·[stress high])) |
+
+Logistic functions keep probabilities in (0, 1) and give smooth, monotone effects:
+harder concepts lower mastery, a closer exam raises stress, more mastered concepts
+raise the pass rate and stress lowers it. The coefficients were chosen to land near
+our hand-crafted CPTs without copying them, so the learning step in §4 has something
+real to estimate.
+
+**Resulting frequencies** (vs. the hand-crafted values from §2):
+
+| Quantity | Simulated data | Hand-crafted |
+|---|---|---|
+| P(Mastery=high \| easy / medium / hard) | .79 / .53 / .24 | .80 / .55 / .25 |
+| P(Quiz=high \| mastery high / low) | .85 / .20 | .85 / .20 |
+| P(Stress=high \| few / some / many) | .78 / .57 / .24 | .80 / .45 / .20 |
+| P(Sleep=poor \| stress high / low) | .65 / .24 | .65 / .25 |
+| P(pass \| k=3, stress low / high) | .94 / .85 | .95 / .85 |
+
+The one visible gap is Stress given DaysLeft = "some": the data gives .57 because
+the stress curve is steeper than our hand-crafted guess near the 4-day end of that
+bucket. This is the kind of correction learning from data should make.
+
+**Is there enough data?** 36 free CPT parameters are learned (see §4). With 5,000
+rows that is **139 rows per parameter**, against the requirement of more than 10.
+Looking at the sparsest case instead of the average, every parent configuration of
+every learned CPT has many rows: the smallest is 236 rows (an ExamSuccess parent
+combination), and the smallest for any other CPT is 776 (Stress given DaysLeft = few).
+`python -m study_planner.cli simulate` prints this table.
 
 ## 4. Learning CPTs with Laplace smoothing
 _(MF-00003)_ The 4+ learned variables, the estimator formula, hand-crafted vs learned
