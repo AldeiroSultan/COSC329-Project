@@ -6,8 +6,29 @@ import argparse
 
 
 def cmd_simulate(args: argparse.Namespace) -> None:
-    # TODO(MF-00002): simulate_students -> write_csv -> print parent_config_counts summary
-    raise NotImplementedError("MF-00002")
+    from study_planner import config as cfg
+    from study_planner.network import state_names
+    from study_planner.simulate_data import (
+        learned_cpt_parents,
+        parent_config_counts,
+        simulate_students,
+        write_csv,
+    )
+
+    df = simulate_students()
+    path = write_csv(df)
+    print(f"Wrote {len(df)} students (seed {cfg.RANDOM_SEED}) to {path}\n")
+
+    names = state_names()
+    counts = parent_config_counts(df)
+    print(f"{'CPT':<62}{'params':>7}{'rows/param':>11}{'min rows in a parent config':>29}")
+    total_params = 0
+    for label, (child, _) in learned_cpt_parents().items():
+        series = counts[label]
+        params = len(series) * (len(names[child]) - 1)
+        total_params += params
+        print(f"{label:<62}{params:>7}{len(df) / params:>11.0f}{int(series.min()):>29}")
+    print(f"\nTotal free parameters learned: {total_params} ({len(df) / total_params:.0f} rows per parameter)")
 
 
 def cmd_learn(args: argparse.Namespace) -> None:
