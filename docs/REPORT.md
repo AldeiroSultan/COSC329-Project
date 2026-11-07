@@ -304,9 +304,64 @@ needs the OAuth credentials from TI-00003, so the live round trip is verified in
 demo (§8) rather than in the automated tests.
 
 ## 8. Results: different students → different actions
-_(MF-00006)_ Scenario table (evidence, posteriors, EU per action, chosen action),
-`docs/figures/expected_utility.png`, 14-day simulation for struggling vs advanced,
-calendar screenshots.
+
+_(Chart: `docs/figures/expected_utility.png`, added in TI-00004. Calendar screenshots to be added by hand.)_
+
+`python -m study_planner.cli demo` runs five simulated students through the same
+system (learned CPTs) and writes one `.ics` calendar per student to `output/`.
+
+### One day, five students
+
+| Student | Evidence | Beliefs: mastery / stress / pass | Chosen action | Expected utility (runner-up) |
+|---|---|---|---|---|
+| Struggling | all hard, all quizzes low, 2 days left | 6% / 78% / 9% | **intense** 5 h block | 23.4 (light 22.0) |
+| Advanced | all easy, all quizzes high, 14 days | 94% / 24% / 87% | **rest** day | 87.2 (light 85.5) |
+| One weak spot | 2 easy + 1 hard (quiz low), 7 days | 79%, 79%, **5%** / 57% / 51% | **focused** 2.5 h on C3 | 54.1 (light 53.8) |
+| Average, early | all medium, no quizzes, slept well, 18 days | 53% / 12% / 54% | **light** 1 h review | 59.2 (rest 58.7) |
+| Burnt-out | medium, quizzes fine, slept poorly, 3 days | 82% / 91% / 71% | **light** 1 h review | 64.4 (rest 63.9) |
+
+Four different actions appear across the five students, and each choice follows from
+the evidence: the student who has mastered almost nothing with two days to go is told to
+cram; the student who is already well prepared is told to rest; a single weak concept
+earns a session aimed at that concept only; and a student who is prepared but stressed
+and sleeping badly gets only a gentle review rather than another long session. The
+margins between the best and second-best action are small for some students (§6), but
+the choices are stable under both the hand-crafted and the learned model.
+
+### Fourteen days, two students
+
+To show the plan adapts over time, the planner is run once per day for 14 days
+(`simulate_two_weeks`). A simulated student has a hidden *true mastery* per concept.
+Each day the planner sees the evidence (including the latest practice quizzes) and
+picks an action, which is written to the calendar. Then the student studies and true
+mastery rises by the action's boost (`m' = m + boost·(1 − m)`), and tomorrow's quizzes
+come back "high" once true mastery reaches 0.5. The simulation is deterministic.
+
+| | Struggling student | Advanced student |
+|---|---|---|
+| Actions over 14 days | light review every day | rest every day |
+| Total study time | **14 h** (14 × 1 h) | **0 h** |
+| Quizzes | low on days 1–3, high from day 4 | high throughout |
+| Expected utility | 21.6 → **59.3** on day 4, then 54.6 → 51.8 | 87.2 → 74.8 (stress rises as the exam nears) |
+| P(pass) | 12% → **56%** on day 4, then 52% → 50% | 87% → 82% |
+
+The struggling student is *not* told to cram. With two weeks to go, one hour a day closes
+enough of the gap that their quizzes turn around on day 4, the evidence changes, and the
+planner's expected utility and pass estimate jump. They never need an intense day,
+because the early light sessions already did the work. For comparison, the same student
+arriving at the one-day scenario with only two days left has a 9% pass estimate and the
+only sensible plan is a 5-hour block. This is the intended effect of the utility function:
+trading a small amount of effort now for less last-minute cramming stress. The advanced student
+is never given a study session, and the other students adapt on the same principle: for
+example the burnt-out student rests until the exam is three days away and only then eases
+back in with 1-hour reviews (checked in `tests/test_scenarios.py`).
+
+**Assumptions to keep in mind.** The simulated student is our own model, not real data:
+true mastery rises by the same boost the planner assumes, a quiz is "high" at 0.5 mastery,
+and the effect of an action on stress is priced on the day it is taken but not carried to
+the next day. The network is a snapshot of one day and does not remember past sessions; only
+the quiz results carry the improvement forward. That is why the struggling student's
+estimated pass chance (about 50%) stays conservative even when their true mastery is 0.95.
 
 ## 9. Limitations & future work
 _(TI-00005)_ e.g. mastery marginals treated as independent in the action model,

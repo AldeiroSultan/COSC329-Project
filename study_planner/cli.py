@@ -69,9 +69,29 @@ def cmd_learn(args: argparse.Namespace) -> None:
 
 
 def cmd_demo(args: argparse.Namespace) -> None:
-    # TODO(MF-00006): for each scenario print evidence, posteriors, EU table, chosen action;
-    # write output/<scenario>.ics; with --google also push to Google Calendar.
-    raise NotImplementedError("MF-00006")
+    from datetime import date
+    from pathlib import Path
+
+    from study_planner import config as cfg
+    from study_planner.demo import run_demo
+    from study_planner.scenarios import SCENARIOS, get_model
+
+    names = [s.name for s in SCENARIOS]
+    if args.scenario and args.scenario not in names:
+        raise SystemExit(f"Unknown scenario {args.scenario!r}. Choose one of: {', '.join(names)}")
+    if args.google and not args.scenario:
+        raise SystemExit(
+            "--google writes to your real calendar and each run replaces today's planner sessions, "
+            f"so pick one student with --scenario NAME ({', '.join(names)})."
+        )
+    today = date.fromisoformat(args.today) if args.today else date.today()
+    run_demo(
+        get_model(args.handcrafted),
+        today,
+        Path(args.out) if args.out else cfg.OUTPUT_DIR,
+        only=args.scenario,
+        google_scenario=args.scenario if args.google else None,
+    )
 
 
 def cmd_serve(args: argparse.Namespace) -> None:
@@ -88,8 +108,11 @@ def main() -> None:
     sub.add_parser("learn", help="learn CPTs with Laplace smoothing").set_defaults(func=cmd_learn)
 
     demo = sub.add_parser("demo", help="run student scenarios and write calendars")
-    demo.add_argument("--google", action="store_true", help="also write to Google Calendar")
+    demo.add_argument("--scenario", help="run only this student (struggling, advanced, ...)")
+    demo.add_argument("--google", action="store_true", help="also write --scenario's plan to Google Calendar")
     demo.add_argument("--handcrafted", action="store_true", help="use hand-crafted instead of learned CPTs")
+    demo.add_argument("--today", help="pretend today is YYYY-MM-DD (default: the real date)")
+    demo.add_argument("--out", help="folder for the .ics files (default: output/)")
     demo.set_defaults(func=cmd_demo)
 
     serve = sub.add_parser("serve", help="run the web dashboard")
