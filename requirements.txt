@@ -10,6 +10,7 @@ google-api-python-client>=2.100
 google-auth-oauthlib>=1.1
 google-auth-httplib2>=0.2
 icalendar>=5.0
+tzdata>=2024.1   # time zone database (not bundled with Windows)
 
 # Dashboard
 fastapi>=0.110
