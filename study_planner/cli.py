@@ -32,8 +32,40 @@ def cmd_simulate(args: argparse.Namespace) -> None:
 
 
 def cmd_learn(args: argparse.Namespace) -> None:
-    # TODO(MF-00003): learn_cpds -> save_cpds -> print learned vs hand-crafted for each CPT
-    raise NotImplementedError("MF-00003")
+    import pandas as pd
+
+    from study_planner import config as cfg
+    from study_planner.learning import (
+        build_learned_model,
+        compare_cpds,
+        crosscheck_with_pgmpy,
+        learn_cpds,
+        learned_variables,
+        save_cpds,
+    )
+    from study_planner.network import state_names
+
+    if not cfg.STUDENTS_CSV.exists():
+        raise SystemExit(f"{cfg.STUDENTS_CSV} not found. Run: python -m study_planner.cli simulate")
+
+    cpds = learn_cpds()
+    path = save_cpds(cpds)
+    build_learned_model().check_model()
+    print(f"Learned {len(cpds)} CPTs with Laplace smoothing (alpha={cfg.LAPLACE_ALPHA}) -> {path}\n")
+
+    table = compare_cpds(cpds)
+    names = state_names()
+    reported = table[table.apply(lambda r: r["state"] == names[r["cpt"]][1], axis=1)]
+    print("P(second state of the CPT variable | parents): hand-crafted vs learned")
+    print(f"{'CPT':<13}{'parents':<68}{'state':<7}{'hand':>6}{'learned':>9}{'diff':>7}")
+    for _, r in reported.iterrows():
+        print(f"{r['cpt']:<13}{r['parents']:<68}{r['state']:<7}{r['handcrafted']:>6.3f}{r['learned']:>9.3f}{r['abs_diff']:>7.3f}")
+    print(f"\nMean |learned - hand-crafted| over all cells: {table['abs_diff'].mean():.3f} "
+          f"(max {table['abs_diff'].max():.3f})")
+
+    df = pd.read_csv(cfg.STUDENTS_CSV)
+    worst = max(crosscheck_with_pgmpy(df, node) for node in learned_variables())
+    print(f"Max difference vs pgmpy BayesianEstimator(prior_type='K2') over all learned CPTs: {worst:.2e}")
 
 
 def cmd_demo(args: argparse.Namespace) -> None:

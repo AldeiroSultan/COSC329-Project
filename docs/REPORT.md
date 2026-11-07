@@ -117,8 +117,61 @@ combination), and the smallest for any other CPT is 776 (Stress given DaysLeft =
 `python -m study_planner.cli simulate` prints this table.
 
 ## 4. Learning CPTs with Laplace smoothing
-_(MF-00003)_ The 4+ learned variables, the estimator formula, hand-crafted vs learned
-comparison table (`docs/figures/cpt_comparison.png`), cross-check with pgmpy K2.
+
+_(Chart: `docs/figures/cpt_comparison.png`, added in TI-00004.)_
+
+**What is learned.** From `students.csv` (§3) we learn the CPTs of **9 variables**,
+i.e. **36 free parameters**: `Mastery_C1..3`, `Quiz_C1..3`, `Stress`, `Sleep` and
+`ExamSuccess`. The root priors `Difficulty_Ci` and `DaysLeft` stay hand-crafted,
+because they are always overridden by evidence at decision time.
+
+**Estimator.** For each variable X with parents Pa we count how often each value of X
+occurs with each parent configuration u, and add a pseudo-count α = 1 to every cell
+(Laplace smoothing):
+
+```
+P(X = x | Pa = u) = (N(x, u) + α) / (N(u) + α·|X|)
+```
+
+Smoothing guarantees that no probability is ever exactly 0, even for a combination that
+never appears in the data (such a parent configuration gets the uniform distribution),
+so one unlucky missing cell can never rule an outcome out. With 5,000 rows the counts
+are large (§3), so α = 1 barely moves the estimates; it matters only for sparse data.
+The implementation is `laplace_cpd()` in `study_planner/learning.py`, with columns
+ordered the way pgmpy expects. `python -m study_planner.cli learn` runs it and writes
+`data/processed/learned_cpts.json`.
+
+**Worked example.** Sleep given Stress = high: suppose a student sample had 1,000
+stressed students of whom 650 slept poorly. Then
+P(poor | high) = (650 + 1) / (1000 + 2) = 0.6497.
+
+**Validation against pgmpy.** We cross-checked all 9 learned CPTs against pgmpy's
+`BayesianEstimator` with `prior_type="K2"`, which is add-one smoothing. The largest
+difference over every cell is **0** (up to floating point), so our counting
+implementation agrees with the library.
+
+**Hand-crafted vs learned** (probability of the second state; full table printed by
+the `learn` command):
+
+| CPT | Parent | Hand-crafted | Learned |
+|---|---|---|---|
+| Mastery_C1 = high | easy / medium / hard | .80 / .55 / .25 | .79 / .53 / .24 |
+| Quiz_C1 = high | mastery low / high | .20 / .85 | .20 / .85 |
+| Stress = high | DaysLeft few / some / many | .80 / **.45** / .20 | .78 / **.57** / .24 |
+| Sleep = good | stress low / high | .75 / .35 | .76 / .35 |
+| ExamSuccess = pass | 3 mastered, stress low / high | .95 / .85 | .94 / .85 |
+| ExamSuccess = pass | 0 mastered, stress low / high | .10 / .05 | .08 / .05 |
+
+Over all 72 cells of the 9 CPTs the mean absolute difference is **0.020** and the
+largest is **0.120**. Almost everything agrees to within a few percentage points,
+which is expected because the data was generated from functions close to our
+hand-crafted guesses. The one clear correction is P(Stress = high | DaysLeft = some):
+the data says **.57**, our guess was **.45**. A student with 4–10 days left is more
+stressed than we assumed, which makes the system a little more cautious about
+recommending an intense session in the middle of the planning window (§6).
+
+`build_learned_model()` returns the same network as §2 with these learned CPTs
+swapped in; this is the model the decision engine uses by default.
 
 ## 5. Inference task
 _(MF-00004)_ Evidence variables, query variables, algorithm (Variable Elimination),
