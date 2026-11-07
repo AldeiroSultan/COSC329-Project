@@ -174,12 +174,88 @@ recommending an intense session in the middle of the planning window (§6).
 swapped in; this is the model the decision engine uses by default.
 
 ## 5. Inference task
-_(MF-00004)_ Evidence variables, query variables, algorithm (Variable Elimination),
-example posteriors.
+
+**Evidence** `e` (what we know about the student today): the difficulty of each
+concept (`Difficulty_C1..3`), `DaysLeft` (computed from the exam date in the
+calendar), and, when the student has them, the practice-quiz results
+(`Quiz_C1..3`) and last night's `Sleep`.
+
+**Query variables:**
+* `P(Mastery_Ci = high | e)` for each concept: which concept is weakest?
+* `P(Stress = high | e)`: how stressed is the student likely to be?
+* `P(ExamSuccess = pass | e)`: the chance of passing if nothing changes.
+
+**Algorithm.** Exact inference with pgmpy's `VariableElimination`
+(`study_planner/inference.py`, function `query()`). Evidence flows in both directions
+through the network: difficulty pushes mastery *down* the arrows (causal reasoning),
+while a quiz result or poor sleep pushes belief *up* against the arrows
+(diagnostic reasoning) to update the hidden mastery and stress.
+
+**Example** (hand-crafted model; `tests/test_inference.py`). A student with an easy
+concept: P(Mastery = high) = .80 from difficulty alone. If their practice quiz was
+high, Bayes' rule gives .8·.85 / (.8·.85 + .2·.2) = **.944**; a low quiz drops it
+the other way. Poor sleep raises P(Stress = high) above the value given by the
+calendar alone, and fewer days left lowers P(pass).
 
 ## 6. Actions, utility & decision
-_(MF-00004)_ The 4 actions and their effect model, utility table, EU formula,
-any tuning and why.
+
+**Actions** (`config.ACTIONS`; the calendar effect is described in §7):
+
+| Action | What it schedules | Hours | Mastery boost | Stress change |
+|---|---|---|---|---|
+| `intense` | Mandatory 5-hour block today, all concepts | 5.0 | +0.35 | +0.20 |
+| `focused` | 2.5-hour block on the weakest concept only | 2.5 | +0.50 (weakest) | +0.03 |
+| `light` | 1-hour light review | 1.0 | +0.20 | −0.04 |
+| `rest` | Clear planner sessions, rest day | 0.0 | 0 | −0.08 |
+
+**Effect model.** An action changes the posteriors from §5 before they are scored.
+Studying closes a fraction of the gap to full mastery, scaled by how urgent it is
+(urgency is 1.0 with few days left, 0.7 with some, 0.3 with many):
+`P'(M = high) = P + boost·urgency·(1 − P)`. Stress moves by the action's stress change
+and is clipped to [0, 1].
+
+**Utility** `U(ExamSuccess, Stress)`, which depends on the query variables, plus a
+cost of 1 point per study hour:
+
+| | Stress low | Stress high |
+|---|---|---|
+| pass | 100 | 85 |
+| fail | 10 | 0 |
+
+Passing is worth the most, but passing while burnt out is worth less than passing
+calmly, and failing calmly is worth more than failing in distress. This is how the
+function trades exam success against stress.
+
+**Expected utility.** For each action `a`,
+
+```
+EU(a) = Σ_{m1,m2,m3,s} Π_i P'(Mi) · P'(s) · [ P(pass|m,s)·U(pass,s) + P(fail|m,s)·U(fail,s) ]  −  1·hours(a)
+```
+
+with `P(pass | m1,m2,m3, s)` read from the model's ExamSuccess CPD, so the same code
+runs on the hand-crafted and the learned network. The mastery marginals are treated
+as independent given the evidence, an approximation noted in §9. The system takes
+`argmax_a EU(a)` (`decide()` in `study_planner/decision.py`).
+
+**Worked example** (struggling student: all concepts hard, all quizzes low, 2 days left).
+P(Mastery = high) is only .06 for each concept and P(Stress = high) = .80, so the
+baseline P(pass) is .10:
+
+| Action | EU hand-crafted | EU learned |
+|---|---|---|
+| intense | **22.4** | **23.4** |
+| light | 21.8 | 22.0 |
+| focused | 16.4 | 15.9 |
+| rest | 11.7 | 11.2 |
+
+The system picks `intense`: with the exam two days away and almost nothing mastered,
+the extra mastery from five hours outweighs the added stress.
+
+**No re-tuning was needed.** The five demo students from `docs/MODEL.md` §6 were
+first checked with the hand-crafted CPTs and then with the learned ones (where
+P(Stress = high | some days) rose from .45 to .57). The chosen action is the same
+for both models for every student, so `config.py` is unchanged. See §8 for the results
+across student types.
 
 ## 7. Calendar integration
 _(MF-00005)_ Google Calendar API flow, .ics fallback, safety rule for deleting events.
