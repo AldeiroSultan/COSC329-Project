@@ -258,7 +258,50 @@ for both models for every student, so `config.py` is unchanged. See §8 for the 
 across student types.
 
 ## 7. Calendar integration
-_(MF-00005)_ Google Calendar API flow, .ics fallback, safety rule for deleting events.
+
+The decision from §6 becomes real calendar events through a small abstraction,
+`CalendarClient` (`study_planner/calendar_api/`), with three interchangeable backends:
+
+| Backend | Use |
+|---|---|
+| `GoogleCalendarClient` | Google Calendar API v3 (OAuth "Desktop app" flow; `credentials.json` and `token.json` stay out of git). Reads existing events, creates study sessions, deletes planner sessions. |
+| `IcsCalendarClient` | Offline fallback: reads an `.ics` export (e.g. from Google/Outlook) to find exams and writes the plan to an `.ics` file that imports into any calendar. |
+| `InMemoryCalendarClient` | Used by the tests and the dashboard. |
+
+**How a day is planned** (`StudyPlanner.plan_today` in `study_planner/planner.py`):
+
+1. **Read the exam** from the calendar: events whose title contains "exam", "midterm" or
+   "final" are exams. `DaysLeft` is computed from the exam date, so the evidence
+   always reflects today's date.
+2. **Decide** with §5–6: query the network, compute the expected utility of each action
+   and take the best.
+3. **Write the calendar.** Any earlier planner session for today is removed first, so
+   running the planner again replaces the plan instead of stacking sessions. Then:
+   * `intense` → a mandatory 5-hour `[BayesPlanner]` block, `focused` → 2.5 hours (the
+     description names the weakest concept), `light` → a 1-hour review;
+   * `rest` → no session is created, which together with step 3's clearing means the
+     planner's sessions for the day are cleared ("clear the calendar for a rest day").
+4. **Find a free slot.** The session starts at the earliest free 30-minute step after
+   10:00 that overlaps none of the student's existing events and ends by 22:00. If the
+   day is completely booked it falls back to 10:00.
+
+Each session's description records the exam, days left, P(pass), P(stress) and the
+expected utility of every action, so the student can see *why* the planner chose it.
+
+**Safety rule.** The planner only ever deletes events whose title starts with
+`[BayesPlanner]`. Every backend refuses to delete anything else (`PermissionError`),
+so a bug can never remove a lecture or an exam from a student's calendar.
+
+**Several exams.** `plan_upcoming` plans every exam in the next 60 days, nearest first,
+matching each to the student's evidence by course name. Each exam gets its own decision
+and session; today's old sessions are cleared once, so a rest day for one exam never
+deletes the session planned for another.
+
+**Testing.** The Google client is tested against a fake service that records the
+requests it would send (event body, time zone, pagination, delete calls), and the `.ics`
+client against hand-written exports with all-day and UTC events. The real Google API
+needs the OAuth credentials from TI-00003, so the live round trip is verified in the
+demo (§8) rather than in the automated tests.
 
 ## 8. Results: different students → different actions
 _(MF-00006)_ Scenario table (evidence, posteriors, EU per action, chosen action),
