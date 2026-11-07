@@ -170,17 +170,21 @@ The system picks `a* = argmax_a EU(a)` and writes it to the calendar.
 
 ## 6. Expected behaviour (what the demo must show)
 
-With the **hand-crafted** CPTs and the numbers above, a quick hand calculation
-gives (EU values in brackets):
+Implemented in MF-00004 (`inference.py`, `decision.py`) and checked with both the
+**hand-crafted** and the **learned** (MF-00003) CPTs. Both pick the same action for
+every scenario, so `config.py` needed no re-tuning. Expected utility of the chosen
+action (and its closest competitor) is given for each model:
 
-| Scenario | Evidence | Action picked |
-|---|---|---|
-| Struggling student | all hard, all quizzes low, few days | `intense` (22.4 vs light 21.8) |
-| Advanced student | all easy, all quizzes high, many days | `rest` (88.8 vs light 87.1) |
-| One weak spot | easy, easy, hard; quiz on C3 low; some days | `focused` (56.6 vs light 56.3) |
-| Average, early | all medium, no quizzes, many days, good sleep | `light` (61.0 vs rest 60.7) |
-| Burnt-out | all medium, quizzes high, few days, poor sleep | `light` (64.5 vs rest 64.0) |
+| Scenario | Evidence | Action | EU hand-crafted | EU learned |
+|---|---|---|---|---|
+| Struggling | all hard, all quizzes low, 2 days | `intense` | 22.4 (light 21.8) | 23.4 (light 22.0) |
+| Advanced | all easy, all quizzes high, 14 days | `rest` | 88.8 (light 87.1) | 87.2 (light 85.5) |
+| One weak spot | easy, easy, hard; quiz on C3 low; 7 days | `focused` | 56.6 (light 56.3) | 54.1 (light 53.8) |
+| Average, early | all medium, no quizzes, good sleep, 18 days | `light` | 61.0 (rest 60.7) | 59.2 (rest 58.7) |
+| Burnt-out | all medium, quizzes high, poor sleep, 3 days | `light` | 64.5 (rest 64.0) | 64.4 (rest 63.9) |
 
-The margins are thin. After MF-00003 swaps in the **learned** CPTs the numbers
-will move, so MF-00004 re-checks these scenarios and, if needed, re-tunes
-`config.py` (update this file too and explain the tuning in the report).
+Four different actions are chosen across the five students. **The margins are
+thin** (0.3 to 1.7 utility points) because the neighbouring actions are close
+cousins (light review vs rest day, focused vs light), so the model is sensitive to
+small changes in the utility numbers. The tests in `tests/test_decision.py` pin
+these choices for both models, so a change to `config.py` that flips one will fail.
