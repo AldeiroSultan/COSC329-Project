@@ -4,46 +4,53 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bayesian Study Planner</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <meta name="description" content="Compare study actions and plan today's session with a Bayesian model.">
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script defer src="/app.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Bayesian Study Planner</h1>
-    <select id="scenario-select" aria-label="Load a scenario">
-      <option value="">Load a scenario…</option>
-    </select>
-  </header>
-
-  <main>
-    <!-- TODO(MF-00007): inputs for 3 concept difficulties, quiz results, sleep, exam date -->
-    <form id="plan-form" class="card">
-      <h2>Student today</h2>
-      <div id="concept-inputs"></div>
-      <label>Sleep last night
-        <select name="sleep"><option value="">unknown</option><option>poor</option><option>good</option></select>
-      </label>
-      <label>Exam date <input type="date" name="exam_date" required></label>
-      <button type="submit">Plan today</button>
-    </form>
-
-    <section class="card">
-      <h2>What the network believes</h2>
-      <canvas id="posterior-chart"></canvas>
-    </section>
-
-    <section class="card">
-      <h2>Expected utility per action</h2>
-      <canvas id="eu-chart"></canvas>
-      <p id="best-action" class="best"></p>
-    </section>
-
-    <section class="card">
-      <h2>Calendar</h2>
-      <div id="calendar"></div>
-    </section>
+<a class="skip" href="#main">Skip to planner</a>
+<aside class="sidebar">
+  <a class="brand" href="#today"><span class="brand-mark" aria-hidden="true">B/</span><span>Bayesian<br>Study Planner</span></a>
+  <div class="course"><span class="meta">Course project</span><strong>COSC 329</strong><span>Decisions under uncertainty</span></div>
+  <nav aria-label="Planner sections"><a href="#today" class="nav-active">Today's plan <span>01</span></a><a href="#reasoning">The reasoning <span>02</span></a><a href="#week">Week at a glance <span>03</span></a><a href="#model">Inside the model <span>04</span></a></nav>
+  <div class="sidebar-note"><span class="small-rule"></span><p>A little evidence.<br>A more considered plan.</p><span class="meta">A simulated study model<br>Built for COSC 329</span></div>
+</aside>
+<div class="workspace">
+  <header class="topbar"><span>Study workbook <span class="separator">/</span> Daily planner</span><time id="today-label">Loading date</time></header>
+  <main id="main">
+    <section id="today" class="page-heading"><div><p class="eyebrow">One day at a time</p><h1>Your next study session</h1><p>Tell the planner where you stand. See which action earns its time.</p></div><div class="model-note"><span class="status-dot"></span><span id="model-label">Learned model</span></div></section>
+    <div id="error" class="error" role="alert" hidden></div>
+    <div class="planner-layout">
+      <form id="plan-form" class="evidence-panel">
+        <div class="section-heading"><h2>Your evidence</h2><span class="section-number">01</span></div>
+        <label for="scenario-select">Start with a student profile</label>
+        <select id="scenario-select"><option value="">Custom student</option></select>
+        <p class="field-note" id="scenario-description">Choose a demo profile, or enter your own evidence.</p>
+        <div class="concept-head"><span>Concept</span><span>Difficulty</span><span>Quiz result</span></div>
+        <div id="concept-inputs"></div>
+        <div class="form-divider"></div>
+        <label for="sleep">Sleep last night</label><select id="sleep" name="sleep"><option value="">Not recorded</option></select>
+        <label for="exam-date">Exam date</label><input id="exam-date" type="date" name="exam_date" required>
+        <label for="model-select">Probability model</label><select id="model-select" name="model"><option value="learned">Learned from simulated students</option><option value="handcrafted">Hand-crafted probabilities</option></select>
+        <button id="submit-plan" type="submit" class="primary" disabled>Calculate today's plan <span aria-hidden="true">→</span></button>
+        <p class="field-note">A preview for today. Your Google Calendar stays unchanged.</p>
+      </form>
+      <div id="results" class="results" aria-busy="true">
+        <section class="recommendation" aria-labelledby="action-title">
+          <div class="recommendation-copy"><p class="eyebrow" id="recommendation-label">Today's recommendation</p><h2 id="action-title">Preparing your plan</h2><p id="action-reason">Loading the model and student profiles.</p><div class="recommendation-meta"><span id="session-time">—</span><span id="days-left">—</span></div></div>
+          <div class="duration"><span id="hours">—</span><span id="duration-unit">study hours</span></div>
+        </section>
+        <p id="plan-status" class="plan-status" role="status" aria-live="polite">Loading planner</p>
+        <section id="reasoning" class="beliefs"><div class="section-heading"><h2>What the evidence suggests</h2><span class="section-number">02</span></div><p class="section-note">Estimated probabilities before today's action</p><div id="posterior-bars" class="posterior-grid"></div></section>
+        <section class="utility-panel"><div class="section-heading"><div><h2>Which action is worth the time?</h2><p class="section-note">Expected utility balances exam success, stress, and study hours</p></div><span class="chart-key"><i></i> Recommended</span></div><div class="chart-wrap"><canvas id="eu-chart" role="img" aria-label="Expected utility comparison; exact values are in the table below"></canvas></div><table class="utility-table"><caption class="sr-only">Expected utility for each study action</caption><thead><tr><th>Action</th><th>Study time</th><th>Utility</th></tr></thead><tbody id="utility-values"></tbody></table></section>
+      </div>
+    </div>
+    <section id="week" class="week-panel"><div class="section-heading"><div><h2>Week at a glance</h2><p class="section-note" id="week-description">Today's proposed session, in context</p></div><span class="section-number">03</span></div><div id="calendar" class="calendar"></div><p class="field-note">Only today is planned. Recalculate with fresh evidence on future days. Times use America/Vancouver.</p></section>
+    <section id="model" class="model-panel"><div class="section-heading"><div><h2>Inside the model</h2><p class="section-note">How difficulty, quizzes, sleep, and time to the exam connect</p></div><span class="section-number">04</span></div><details id="network-details"><summary>Explore the 13-node Bayesian network <span aria-hidden="true">+</span></summary><div id="network-graph" class="network-graph"></div><div class="network-footer"><p>Arrows show the model's dependencies. Quiz results and sleep provide evidence about hidden mastery and stress.</p><label for="node-select">Inspect a probability table</label><select id="node-select"></select><div id="cpd-table" class="cpd-table"></div></div></details><p class="model-disclaimer">This coursework model learns from simulated data. Its probabilities illustrate Bayesian reasoning; they are not validated predictions of your exam performance.</p></section>
+    <footer><span>Bayesian Study Planner · COSC 329</span><span>Plan with evidence. Revisit as it changes.</span></footer>
   </main>
-
-  <script src="app.js"></script>
+</div>
 </body>
 </html>
