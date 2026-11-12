@@ -83,3 +83,31 @@ the student CSV (run `simulate` first if it is missing). Use `figures --out PATH
 to save elsewhere. The charts include all 13 network nodes, all nine learned CPTs,
 and all four action utilities for each of the five demo students. No Google login
 is needed.
+
+## Web dashboard
+
+From the repository root (the folder containing `requirements.txt`), run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m study_planner.cli serve
+```
+
+Open http://127.0.0.1:8000 in your browser. Keep the terminal running; Ctrl+C
+stops the server. If port 8000 is busy, use `serve --port 8018` and open
+http://127.0.0.1:8018 instead.
+
+Choose one of the five student profiles or enter custom difficulty, quiz, sleep,
+and exam-date evidence, then click **Calculate today's plan**. The dashboard
+shows mastery/stress/pass probabilities, all four action utilities, the chosen
+session, and a seven-day calendar containing today's preview. Expand **Inside
+the model** to inspect the network and conditional probability tables. The model
+selector switches between learned and hand-crafted probabilities.
+
+This preview uses an isolated in-memory calendar; it does not read OAuth tokens
+or modify Google Calendar. Future days are not forecast. Dates and times use
+America/Vancouver. Learned models are cached until server restart: restart after
+changing the student CSV. If the CSV is missing, run `simulate` or select the
+hand-crafted model. Chart.js loads from a CDN; the numeric utility table remains
+available without it. See [dashboard design notes](docs/DASHBOARD.md) for design
+references and scope.

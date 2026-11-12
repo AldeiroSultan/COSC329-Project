@@ -385,6 +385,25 @@ the next day. The network is a snapshot of one day and does not remember past se
 the quiz results carry the improvement forward. That is why the struggling student's
 estimated pass chance (about 50%) stays conservative even when their true mastery is 0.95.
 
+### Interactive dashboard
+
+The FastAPI dashboard connects the evidence form to the same inference and
+utility pipeline used by the CLI. Five preset students can be compared under
+learned or hand-crafted probabilities, or the user can enter custom evidence.
+The view presents five posterior estimates, an action-utility chart and numeric
+table, a recommended duration/focus, and today's session within a seven-day view.
+An expandable network diagram exposes all 13 nodes and their probability tables.
+
+Each request creates a fresh in-memory calendar. The dashboard does not modify
+Google Calendar, and it explicitly leaves future days unplanned. Evidence is
+validated before inference; missing observations remain unobserved. Dates use
+America/Vancouver and exam dates before today are rejected. The model is cached
+for the server lifetime and must be restarted after changing training data.
+
+Dashboard tests cover all five scenarios with both probability models, invalid
+evidence, request isolation, network/CPT output, missing training data, static
+assets and exclusion of credential files. The full suite passes 144 tests.
+
 ## 9. Limitations & future work
 _(TI-00005)_ e.g. mastery marginals treated as independent in the action model,
 simulated rather than real data, action effects hand-set.
