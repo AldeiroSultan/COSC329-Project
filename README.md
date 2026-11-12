@@ -11,6 +11,7 @@ light 1h review / rest day) and writes it to Google Calendar or an `.ics` file.
 * Data: [docs/DATA.md](docs/DATA.md)
 * Plan & branches: [docs/PLAN.md](docs/PLAN.md)
 * Report: [docs/REPORT.md](docs/REPORT.md)
+* Demo recording guide: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md)
 
 ## Tech stack
 
