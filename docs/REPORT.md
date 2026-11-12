@@ -9,7 +9,7 @@ _(TI-00005)_ Problem, what the system does, how to run it.
 
 ## 2. Network structure & hand-crafted CPTs
 
-_(Diagram: `docs/figures/network.png`, added in TI-00004.)_
+![Bayesian network with evidence, queried variables and optional observations](figures/network.png)
 
 The network has **13 discrete nodes** and is built in `study_planner/network.py`
 (`build_handcrafted_model()`) with pgmpy. The 9 core nodes model the student's
@@ -118,7 +118,7 @@ combination), and the smallest for any other CPT is 776 (Stress given DaysLeft =
 
 ## 4. Learning CPTs with Laplace smoothing
 
-_(Chart: `docs/figures/cpt_comparison.png`, added in TI-00004.)_
+![Hand-crafted versus learned probabilities for all nine learned CPTs](figures/cpt_comparison.png)
 
 **What is learned.** From `students.csv` (§3) we learn the CPTs of **9 variables**,
 i.e. **36 free parameters**: `Mastery_C1..3`, `Quiz_C1..3`, `Stress`, `Sleep` and
@@ -305,7 +305,12 @@ demo (§8) rather than in the automated tests.
 
 ## 8. Results: different students → different actions
 
-_(Chart: `docs/figures/expected_utility.png`, added in TI-00004. Calendar screenshots to be added by hand.)_
+![Expected utility of every action across the five student scenarios](figures/expected_utility.png)
+
+Figures are regenerated with `python -m study_planner.cli figures` from the committed
+student CSV. The CPT chart shows each binary variable's second state; the other
+state is its complement. Utility bars use the learned model and outline each chosen
+action. Calendar screenshots still need to be added to the final report.
 
 `python -m study_planner.cli demo` runs five simulated students through the same
 system (learned CPTs) and writes one `.ics` calendar per student to `output/`.

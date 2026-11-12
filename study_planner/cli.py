@@ -100,6 +100,18 @@ def cmd_serve(args: argparse.Namespace) -> None:
     uvicorn.run("study_planner.api:app", host="127.0.0.1", port=args.port, reload=True)
 
 
+def cmd_figures(args: argparse.Namespace) -> None:
+    """Write reproducible report charts from the committed student dataset."""
+    from pathlib import Path
+    from study_planner import config as cfg
+    from study_planner.viz import FIG_DIR, generate_figures
+
+    if not cfg.STUDENTS_CSV.exists():
+        raise SystemExit("Student CSV not found. Run: python -m study_planner.cli simulate")
+    for path in generate_figures(Path(args.out) if args.out else FIG_DIR):
+        print(f"Saved: {path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="study_planner")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -118,6 +130,10 @@ def main() -> None:
     serve = sub.add_parser("serve", help="run the web dashboard")
     serve.add_argument("--port", type=int, default=8000)
     serve.set_defaults(func=cmd_serve)
+
+    figures = sub.add_parser("figures", help="generate report network, CPT and utility charts")
+    figures.add_argument("--out", help="output directory (default: docs/figures/)")
+    figures.set_defaults(func=cmd_figures)
 
     args = parser.parse_args()
     args.func(args)

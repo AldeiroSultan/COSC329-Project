@@ -69,6 +69,7 @@ python -m study_planner.cli simulate
 python -m study_planner.cli learn
 python -m study_planner.cli demo
 python -m study_planner.cli serve
+python -m study_planner.cli figures
 ```
 
 Without any setup, `demo` writes `.ics` calendars to `output/` that import into any
@@ -76,3 +77,9 @@ calendar. To write to your real Google Calendar instead, follow
 [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) (one-time, about 20 minutes), then run
 `python -m study_planner.cli demo --scenario struggling --google`. `credentials.json`
 and `token.json` stay in the repo root and are git-ignored.
+
+The `figures` command regenerates the three report PNGs in `docs/figures/` from
+the student CSV (run `simulate` first if it is missing). Use `figures --out PATH`
+to save elsewhere. The charts include all 13 network nodes, all nine learned CPTs,
+and all four action utilities for each of the five demo students. No Google login
+is needed.
