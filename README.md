@@ -43,6 +43,18 @@ python -m pytest -q
 Tested with Python 3.14 on Windows. If pgmpy fails to install on your Python
 version, install Python 3.12 and use `py -3.12 -m venv .venv` instead.
 
+## Automated tests
+
+The `Tests` GitHub Actions workflow runs `python -m pytest -q` on pull requests
+into `staging` or `main`, and on pushes to either branch. It installs dependencies
+from `requirements.txt` on Ubuntu with Python 3.14, caches pip downloads, and
+checks dependency compatibility before running the suite.
+
+After opening a PR, check **Checks → Python 3.14 tests** and wait for it to pass
+before merging. Google Calendar tests use a fake service; CI needs no Google
+credentials or access to a real calendar. Run the same suite locally with
+`python -m pytest -q` from the repository root.
+
 ## Usage
 
 ```bash

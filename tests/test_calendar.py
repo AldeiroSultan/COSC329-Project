@@ -193,7 +193,11 @@ def test_google_delete_only_planner_events():
     assert service.events().calls == [("delete", {"calendarId": "primary", "eventId": "g9"})]
 
 
-def test_google_without_credentials_gives_a_helpful_error(tmp_path, monkeypatch):
-    monkeypatch.setattr("study_planner.calendar_api.google_calendar.TOKEN_FILE", tmp_path / "token.json")
+def test_google_without_credentials_gives_a_helpful_error(tmp_path):
+    # Explicit paths keep this test independent of a developer's saved OAuth token.
+    # Patching TOKEN_FILE cannot change a default argument bound at import time.
     with pytest.raises(FileNotFoundError, match="GOOGLE_SETUP"):
-        GoogleCalendarClient(credentials_file=tmp_path / "missing.json")
+        GoogleCalendarClient._authenticate(
+            credentials_file=tmp_path / "missing.json",
+            token_file=tmp_path / "token.json",
+        )
