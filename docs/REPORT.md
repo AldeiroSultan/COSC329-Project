@@ -310,6 +310,23 @@ _(Chart: `docs/figures/expected_utility.png`, added in TI-00004. Calendar screen
 `python -m study_planner.cli demo` runs five simulated students through the same
 system (learned CPTs) and writes one `.ics` calendar per student to `output/`.
 
+### Live Google Calendar verification
+
+On November 12, 2026, Sultan completed the desktop OAuth flow and tested the
+Google Calendar backend with the demo scenarios. The struggling scenario created
+`[BayesPlanner] Intense 5-hour mandatory study block` from 10:00 to 15:00.
+Its description showed P(pass) = 9%, P(high stress) = 78%, mastery probabilities
+of 6%, 5%, and 5%, and expected utilities of intense 23.4, focused 15.9,
+light 22.0, and rest 11.2. These are simulated scenario results, not estimates
+of Sultan's own exam performance.
+
+Running the advanced scenario afterward removed the study block, as confirmed
+by Sultan in Google Calendar. This manually verifies authentication, event
+creation, and rest-day cleanup against the live API. Automated deletion-guard
+tests provide separate coverage for protecting untagged events. Setup and
+reproduction steps are in `docs/GOOGLE_SETUP.md`; the calendar screenshot was
+provided during verification and still needs to be added to the final report.
+
 ### One day, five students
 
 | Student | Evidence | Beliefs: mastery / stress / pass | Chosen action | Expected utility (runner-up) |

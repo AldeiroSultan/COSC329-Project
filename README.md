@@ -52,5 +52,8 @@ python -m study_planner.cli demo
 python -m study_planner.cli serve
 ```
 
-Google Calendar: see `docs/GOOGLE_SETUP.md` (written in TI-00003). Put
-`credentials.json` in the repo root — it is git-ignored.
+Without any setup, `demo` writes `.ics` calendars to `output/` that import into any
+calendar. To write to your real Google Calendar instead, follow
+[docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) (one-time, about 20 minutes), then run
+`python -m study_planner.cli demo --scenario struggling --google`. `credentials.json`
+and `token.json` stay in the repo root and are git-ignored.
