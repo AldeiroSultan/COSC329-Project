@@ -91,3 +91,20 @@ def test_write_csv_round_trip(tmp_path):
     df = simulate_students(100)
     path = write_csv(df, tmp_path / "nested" / "students.csv")
     assert pd.read_csv(path).equals(df)
+
+
+def test_committed_csv_matches_documented_schema_and_seed(df):
+    submitted = pd.read_csv(cfg.STUDENTS_CSV)
+    assert list(submitted.columns) == COLUMNS
+    assert len(submitted) == cfg.N_STUDENTS
+    assert not submitted.isna().any().any()
+    assert submitted["student_id"].tolist() == list(range(1, cfg.N_STUDENTS + 1))
+    for node, states in state_names().items():
+        assert set(submitted[node]) <= set(states), node
+    days = submitted["days_until_exam"]
+    assert pd.api.types.is_integer_dtype(days)
+    assert days.between(1, 21).all()
+    # Independent boundary check against DATA.md, rather than calling days_bucket.
+    expected = days.map(lambda day: "few" if day <= 3 else "some" if day <= 10 else "many")
+    assert submitted[cfg.NODE_DAYS].equals(expected.rename(cfg.NODE_DAYS))
+    pd.testing.assert_frame_equal(submitted, df)

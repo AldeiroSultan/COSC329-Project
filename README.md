@@ -55,6 +55,13 @@ before merging. Google Calendar tests use a fake service; CI needs no Google
 credentials or access to a real calendar. Run the same suite locally with
 `python -m pytest -q` from the repository root.
 
+The model/data tests cover CPT normalization, nonzero Laplace probabilities,
+missing parent configurations, agreement with pgmpy's K2 estimator, and learned
+versus hand-crafted CPT tolerances (including the documented Stress correction).
+They also validate the committed CSV's schema and fixed-seed reproducibility,
+and check that the committed learned-CPT JSON matches that CSV. If you deliberately
+change the simulation, regenerate both artifacts with `simulate` and `learn`.
+
 ## Usage
 
 ```bash

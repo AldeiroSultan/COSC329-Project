@@ -134,3 +134,48 @@ def test_cpd_as_dict_sums_to_one_per_parent_configuration(csv_path):
     assert len(table) == 32
     for config in {key[1] for key in table}:
         assert sum(p for (_, c), p in table.items() if c == config) == pytest.approx(1.0)
+
+
+def test_sparse_exam_cpd_preserves_parent_order_and_smooths_unseen_columns():
+    # Two asymmetric configurations catch swapped mastery parents; the remaining
+    # fourteen configurations have no observations and must stay uniform.
+    parents = [cfg.NODE_MASTERY[c] for c in cfg.CONCEPTS] + [cfg.NODE_STRESS]
+    first = ("high", "low", "low", "high")
+    second = ("low", "high", "low", "high")
+    rows = [dict(zip(parents, first), **{cfg.NODE_EXAM: result})
+            for result in ["pass", "pass", "pass", "fail"]]
+    rows += [dict(zip(parents, second), **{cfg.NODE_EXAM: "fail"})] * 2
+    cpd = laplace_cpd(pd.DataFrame(rows), cfg.NODE_EXAM, parents, alpha=1)
+    table = cpd_as_dict(cpd)
+    assert len(table) == 32
+    for (state, configuration), probability in table.items():
+        expected_pass = {first: 4 / 6, second: 1 / 4}.get(configuration, 1 / 2)
+        expected = expected_pass if state == "pass" else 1 - expected_pass
+        assert probability == pytest.approx(expected), (state, configuration)
+        assert 0 < probability < 1
+    np.testing.assert_allclose(cpd.get_values().sum(axis=0), 1)
+
+
+def test_all_learned_cpt_cells_remain_close_to_handcrafted_model(csv_path):
+    table = compare_cpds(learn_cpds(csv_path))
+    # Synthetic data intentionally differs from the hand-crafted model. Allow
+    # 10 percentage points per cell, or 15 for Stress's documented ~12-point
+    # correction at DaysLeft=some (REPORT.md section 4).
+    for node, cells in table.groupby("cpt"):
+        tolerance = 0.15 if node == cfg.NODE_STRESS else 0.10
+        assert cells["abs_diff"].max() < tolerance, node
+
+
+def test_committed_learned_json_matches_committed_csv():
+    # Protect the actual submitted artifacts, not only temporary generated files.
+    saved = json.loads(cfg.LEARNED_CPTS_JSON.read_text(encoding="utf-8"))
+    cpds = learn_cpds(cfg.STUDENTS_CSV)
+    assert set(saved) == {cpd.variable for cpd in cpds}
+    for cpd in cpds:
+        record = saved[cpd.variable]
+        assert record["parents"] == parents_of(cpd.variable)
+        assert record["states"] == cpd.state_names[cpd.variable]
+        assert record["parent_states"] == {
+            parent: cpd.state_names[parent] for parent in parents_of(cpd.variable)
+        }
+        np.testing.assert_allclose(record["values"], cpd.get_values(), rtol=0, atol=1e-12)
