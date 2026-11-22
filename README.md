@@ -17,7 +17,7 @@ light 1h review / rest day) and writes it to Google Calendar or an `.ics` file.
 ## Project status
 
 Every feature of the 2-person option is implemented, demonstrated and tested.
-**152 automated tests pass** and the `Tests` workflow is green on `main`.
+**167 automated tests pass** and the `Tests` workflow is green on `main`.
 
 | Feature | Status | Where | Tests |
 |---|---|---|---|
@@ -29,7 +29,7 @@ Every feature of the 2-person option is implemented, demonstrated and tested.
 | Calendar API: Google Calendar, `.ics`, in-memory | Done (live Google run verified once, Nov 12) | `calendar_api/`, `planner.py`, [GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) | `test_calendar.py` (12), `test_planner.py` (13) |
 | Student scenarios and 14-day adaptation demo | Done | `scenarios.py`, `demo.py` | `test_scenarios.py` (16) |
 | Sensitivity analysis of the decisions | Done | `sensitivity.py` | `test_sensitivity.py` (8) |
-| Web dashboard (extra) | Done | `api.py`, `web/`, [DASHBOARD.md](docs/DASHBOARD.md) | `test_api.py` (25) |
+| Web dashboard (extra): light/dark themes, guided tour and three guided examples | Done | `api.py`, `web/`, [DASHBOARD.md](docs/DASHBOARD.md) | `test_api.py` (25), `test_dashboard_assets.py` (15) |
 | Report figures | Done | `viz.py`, `docs/figures/` | `test_viz.py` (1) |
 
 **Bugs.** No failing tests and no open bugs are known. The items below are known
@@ -45,7 +45,8 @@ limitations, not defects:
 * **One-day model.** The network has no memory of past sessions; improvement reaches it only
   through new quiz results.
 * **Dashboard.** Previews today only and never writes to Google Calendar. The learned model is
-  cached until the server restarts. Chart.js loads from a CDN (the numeric table works without it).
+  cached until the server restarts. The front end has no browser test suite: its static checks
+  are automated, the visuals were checked by hand.
 * **Google Calendar.** Verified live once (Sultan's account, Nov 12); the automated tests use a
   fake service. While the OAuth app is in Testing mode, sign-ins expire after about 7 days
   (delete `token.json`). `demo --google` requires `--scenario NAME`.
@@ -61,7 +62,7 @@ limitations, not defects:
 | Data simulation / CSV | numpy, pandas |
 | CPT learning | own Laplace-smoothed counting (checked against pgmpy's K2 estimator) |
 | Calendar | Google Calendar API v3 (`google-api-python-client`), `.ics` fallback (`icalendar`) |
-| Dashboard | FastAPI + plain HTML/CSS/JS + Chart.js |
+| Dashboard | FastAPI + plain HTML/CSS/JS (no build step, no external libraries) |
 | Figures | matplotlib, networkx |
 | Tests | pytest |
 
@@ -93,7 +94,7 @@ python -m pytest -q
 
 If pgmpy fails to install on your Python version, use Python 3.12 instead
 (`py -3.12 -m venv .venv` on Windows, `python3.12 -m venv .venv` elsewhere).
-Expected result: `152 passed` (plus one harmless warning).
+Expected result: `167 passed` (plus one harmless warning).
 
 ## Automated tests
 
@@ -169,9 +170,9 @@ is needed.
 │   ├── viz.py                      report figures
 │   └── cli.py                      entry point: simulate | learn | demo | sensitivity | serve | figures
 ├── scripts/build_report_pdf.py     renders docs/REPORT.md to the PDF
-├── web/                            dashboard front end (index.html, app.js, styles.css)
+├── web/                            dashboard front end (index.html, styles.css, app.js, tour.js)
 ├── data/processed/                 students.csv (5,000 rows), learned_cpts.json
-├── tests/                          152 tests, one file per feature (see Project status)
+├── tests/                          167 tests, one file per feature (see Project status)
 ├── docs/                           MODEL, DATA, PLAN, REPORT (.md and .pdf), GOOGLE_SETUP, DEMO_GUIDE,
 │                                   DASHBOARD, and figures/
 └── output/                         generated .ics calendars (git-ignored)
@@ -194,17 +195,23 @@ Open http://127.0.0.1:8000 in your browser. Keep the terminal running; Ctrl+C
 stops the server. If port 8000 is busy, use `serve --port 8018` and open
 http://127.0.0.1:8018 instead.
 
+The first time you open it, a short tour points out each control. To see it again, or to watch
+the planner work through an example, press the **?** button at the top right: **App tour**, or
+one of three **guided examples** (struggling student, well-prepared student, one weak concept).
+A guided example fills in the evidence, presses Calculate, explains each result as it appears and
+ends with a summary. Use Next or the arrow keys, and Esc to leave.
+
 Choose one of the five student profiles or enter custom difficulty, quiz, sleep,
-and exam-date evidence, then click **Calculate today's plan**. The dashboard
-shows mastery/stress/pass probabilities, all four action utilities, the chosen
-session, and a seven-day calendar containing today's preview. Expand **Inside
-the model** to inspect the network and conditional probability tables. The model
-selector switches between learned and hand-crafted probabilities.
+and exam-date evidence, then click **Calculate plan**. The dashboard
+shows mastery/stress/pass probabilities, all four action scores, the chosen
+session, and a seven-day calendar containing today's preview. The **Model** section
+shows the network and every conditional probability table. The model
+selector switches between learned and hand-crafted probabilities. The sun/moon switch
+changes between the light and dark themes; your choice is remembered.
 
 This preview uses an isolated in-memory calendar; it does not read OAuth tokens
 or modify Google Calendar. Future days are not forecast. Dates and times use
 America/Vancouver. Learned models are cached until server restart: restart after
 changing the student CSV. If the CSV is missing, run `simulate` or select the
-hand-crafted model. Chart.js loads from a CDN; the numeric utility table remains
-available without it. See [dashboard design notes](docs/DASHBOARD.md) for design
-references and scope.
+hand-crafted model. The page uses no external libraries or fonts, so it works offline.
+See [dashboard design notes](docs/DASHBOARD.md) for the design and scope.

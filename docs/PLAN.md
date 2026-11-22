@@ -129,6 +129,14 @@ Each spec is what "done" means. Claude reads this section when you ask it to do 
   improvements); repo link; PDF export (`scripts/build_report_pdf.py`).
 * New `study_planner/sensitivity.py` + `cli sensitivity` + 8 tests (152 total).
 
+### MF-00008 — Dashboard redesign and guided tour (added Nov 22) · **Sultan**
+* Neumorphic (raised / pressed) interface in a light and a dark theme, switched with a sun/moon
+  toggle that uses SVG icons; no emoji, no external libraries, no explanatory captions.
+* Spotlight tour (`web/tour.js`): first-visit app walkthrough, and a **?** menu with three guided
+  examples (struggling, well-prepared, one weak concept) that fill in the form, calculate and end
+  with a generated summary.
+* `tests/test_dashboard_assets.py` (15 tests, 167 total); README, REPORT §7–8, DASHBOARD.md updated.
+
 ---
 
 ## Calendar

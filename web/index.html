@@ -1,56 +1,175 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bayesian Study Planner</title>
-  <meta name="description" content="Compare study actions and plan today's session with a Bayesian model.">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    /* Set the theme before first paint so there is no flash. */
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem('theme'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <link rel="stylesheet" href="/styles.css">
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script defer src="/app.js"></script>
+  <script type="module" src="/app.js"></script>
 </head>
 <body>
-<a class="skip" href="#main">Skip to planner</a>
-<aside class="sidebar">
-  <a class="brand" href="#today"><span class="brand-mark" aria-hidden="true">B/</span><span>Bayesian<br>Study Planner</span></a>
-  <div class="course"><span class="meta">Course project</span><strong>COSC 329</strong><span>Decisions under uncertainty</span></div>
-  <nav aria-label="Planner sections"><a href="#today" class="nav-active">Today's plan <span>01</span></a><a href="#reasoning">The reasoning <span>02</span></a><a href="#week">Week at a glance <span>03</span></a><a href="#model">Inside the model <span>04</span></a></nav>
-  <div class="sidebar-note"><span class="small-rule"></span><p>A little evidence.<br>A more considered plan.</p><span class="meta">A simulated study model<br>Built for COSC 329</span></div>
-</aside>
-<div class="workspace">
-  <header class="topbar"><span>Study workbook <span class="separator">/</span> Daily planner</span><time id="today-label">Loading date</time></header>
-  <main id="main">
-    <section id="today" class="page-heading"><div><p class="eyebrow">One day at a time</p><h1>Your next study session</h1><p>Tell the planner where you stand. See which action earns its time.</p></div><div class="model-note"><span class="status-dot"></span><span id="model-label">Learned model</span></div></section>
-    <div id="error" class="error" role="alert" hidden></div>
-    <div class="planner-layout">
-      <form id="plan-form" class="evidence-panel">
-        <div class="section-heading"><h2>Your evidence</h2><span class="section-number">01</span></div>
-        <label for="scenario-select">Start with a student profile</label>
-        <select id="scenario-select"><option value="">Custom student</option></select>
-        <p class="field-note" id="scenario-description">Choose a demo profile, or enter your own evidence.</p>
-        <div class="concept-head"><span>Concept</span><span>Difficulty</span><span>Quiz result</span></div>
-        <div id="concept-inputs"></div>
-        <div class="form-divider"></div>
-        <label for="sleep">Sleep last night</label><select id="sleep" name="sleep"><option value="">Not recorded</option></select>
-        <label for="exam-date">Exam date</label><input id="exam-date" type="date" name="exam_date" required>
-        <label for="model-select">Probability model</label><select id="model-select" name="model"><option value="learned">Learned from simulated students</option><option value="handcrafted">Hand-crafted probabilities</option></select>
-        <button id="submit-plan" type="submit" class="primary" disabled>Calculate today's plan <span aria-hidden="true">→</span></button>
-        <p class="field-note">A preview for today. Your Google Calendar stays unchanged.</p>
-      </form>
-      <div id="results" class="results" aria-busy="true">
-        <section class="recommendation" aria-labelledby="action-title">
-          <div class="recommendation-copy"><p class="eyebrow" id="recommendation-label">Today's recommendation</p><h2 id="action-title">Preparing your plan</h2><p id="action-reason">Loading the model and student profiles.</p><div class="recommendation-meta"><span id="session-time">—</span><span id="days-left">—</span></div></div>
-          <div class="duration"><span id="hours">—</span><span id="duration-unit">study hours</span></div>
-        </section>
-        <p id="plan-status" class="plan-status" role="status" aria-live="polite">Loading planner</p>
-        <section id="reasoning" class="beliefs"><div class="section-heading"><h2>What the evidence suggests</h2><span class="section-number">02</span></div><p class="section-note">Estimated probabilities before today's action</p><div id="posterior-bars" class="posterior-grid"></div></section>
-        <section class="utility-panel"><div class="section-heading"><div><h2>Which action is worth the time?</h2><p class="section-note">Expected utility balances exam success, stress, and study hours</p></div><span class="chart-key"><i></i> Recommended</span></div><div class="chart-wrap"><canvas id="eu-chart" role="img" aria-label="Expected utility comparison; exact values are in the table below"></canvas></div><table class="utility-table"><caption class="sr-only">Expected utility for each study action</caption><thead><tr><th>Action</th><th>Study time</th><th>Utility</th></tr></thead><tbody id="utility-values"></tbody></table></section>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-2.9 2.4-2.9 4.4"/><path d="M12 18h.01"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="i-bars" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V7M18 17v-8"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-network" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.5 8l3.4 8M16.5 8l-3.4 8"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5l12 7.5-12 7.5z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></symbol>
+</svg>
+
+<div class="shell">
+  <aside class="rail" id="rail">
+    <a class="brand" href="#overview" aria-label="Bayesian Study Planner"><span class="brand-mark"></span></a>
+    <nav class="rail-nav" aria-label="Sections">
+      <a href="#overview" data-section="overview"><svg class="icon"><use href="#i-grid"/></svg><span>Overview</span></a>
+      <a href="#planner" data-section="planner"><svg class="icon"><use href="#i-sliders"/></svg><span>Planner</span></a>
+      <a href="#week" data-section="week"><svg class="icon"><use href="#i-calendar"/></svg><span>Week</span></a>
+      <a href="#model" data-section="model"><svg class="icon"><use href="#i-network"/></svg><span>Model</span></a>
+    </nav>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <div class="title">
+        <h1>Study planner</h1>
+        <time id="today-label"></time>
       </div>
-    </div>
-    <section id="week" class="week-panel"><div class="section-heading"><div><h2>Week at a glance</h2><p class="section-note" id="week-description">Today's proposed session, in context</p></div><span class="section-number">03</span></div><div id="calendar" class="calendar"></div><p class="field-note">Only today is planned. Recalculate with fresh evidence on future days. Times use America/Vancouver.</p></section>
-    <section id="model" class="model-panel"><div class="section-heading"><div><h2>Inside the model</h2><p class="section-note">How difficulty, quizzes, sleep, and time to the exam connect</p></div><span class="section-number">04</span></div><details id="network-details"><summary>Explore the 13-node Bayesian network <span aria-hidden="true">+</span></summary><div id="network-graph" class="network-graph"></div><div class="network-footer"><p>Arrows show the model's dependencies. Quiz results and sleep provide evidence about hidden mastery and stress.</p><label for="node-select">Inspect a probability table</label><select id="node-select"></select><div id="cpd-table" class="cpd-table"></div></div></details><p class="model-disclaimer">This coursework model learns from simulated data. Its probabilities illustrate Bayesian reasoning; they are not validated predictions of your exam performance.</p></section>
-    <footer><span>Bayesian Study Planner · COSC 329</span><span>Plan with evidence. Revisit as it changes.</span></footer>
-  </main>
+      <div class="topbar-actions">
+        <span class="badge" id="stale" hidden>Out of date</span>
+        <div class="menu-wrap">
+          <button id="help-button" class="btn icon-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="help-menu" aria-label="Help and guided examples">
+            <svg class="icon"><use href="#i-help"/></svg>
+          </button>
+          <div id="help-menu" class="menu" role="menu" aria-label="Help" hidden>
+            <button class="menu-item" role="menuitem" type="button" data-guide="tour">
+              <svg class="icon"><use href="#i-route"/></svg>
+              <span><strong>App tour</strong><small>Where everything is</small></span>
+            </button>
+            <p class="menu-heading" role="presentation">Guided examples</p>
+            <div id="guide-items" class="menu-group"></div>
+          </div>
+        </div>
+        <button id="theme-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="Dark mode">
+          <svg class="icon switch-sun"><use href="#i-sun"/></svg>
+          <svg class="icon switch-moon"><use href="#i-moon"/></svg>
+          <span class="switch-knob">
+            <svg class="icon knob-sun"><use href="#i-sun"/></svg>
+            <svg class="icon knob-moon"><use href="#i-moon"/></svg>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <div id="error" class="alert" role="alert" hidden></div>
+      <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+
+      <section id="overview" class="stats" aria-label="Today's plan">
+        <article class="card stat stat-action">
+          <strong id="stat-action">&mdash;</strong>
+          <span>Recommended</span>
+          <small id="stat-action-sub"></small>
+        </article>
+        <article class="card stat">
+          <strong id="stat-hours">&mdash;</strong>
+          <span>Study time</span>
+          <small id="stat-session"></small>
+        </article>
+        <article class="card stat">
+          <strong id="stat-pass">&mdash;</strong>
+          <span>Pass chance</span>
+        </article>
+        <article class="card stat">
+          <strong id="stat-stress">&mdash;</strong>
+          <span>Stress risk</span>
+        </article>
+        <article class="card stat">
+          <strong id="stat-days">&mdash;</strong>
+          <span>Days to exam</span>
+          <small id="stat-exam"></small>
+        </article>
+      </section>
+
+      <div class="grid" id="planner">
+        <section id="evidence" class="panel" aria-labelledby="evidence-title">
+          <h2 id="evidence-title">Evidence</h2>
+          <form id="plan-form" novalidate>
+            <div class="field" id="profile-field">
+              <label for="profile">Student profile</label>
+              <div class="select"><select id="profile"><option value="">Custom</option></select></div>
+            </div>
+            <div id="concept-fields" class="concepts"></div>
+            <div id="context-fields" class="context">
+              <div class="field" id="sleep-field"></div>
+              <div class="field">
+                <label for="exam-date">Exam date</label>
+                <input id="exam-date" class="date" type="date" name="exam_date" required>
+              </div>
+            </div>
+            <div class="field" id="model-field"></div>
+            <button id="calculate" class="btn primary wide" type="submit" disabled>
+              <span class="btn-label">Calculate plan</span>
+              <svg class="icon"><use href="#i-arrow-right"/></svg>
+            </button>
+          </form>
+        </section>
+
+        <div class="stack">
+          <section id="scores" class="panel" aria-labelledby="scores-title">
+            <h2 id="scores-title">Action scores</h2>
+            <div id="score-chart" class="bars" aria-hidden="true"></div>
+            <table class="sr-only">
+              <caption>Expected utility of each study action</caption>
+              <thead><tr><th scope="col">Action</th><th scope="col">Study time</th><th scope="col">Score</th></tr></thead>
+              <tbody id="score-table"></tbody>
+            </table>
+          </section>
+
+          <section id="beliefs" class="panel" aria-labelledby="beliefs-title">
+            <h2 id="beliefs-title">Beliefs</h2>
+            <div id="belief-bars" class="beliefs"></div>
+          </section>
+        </div>
+      </div>
+
+      <section id="week" class="panel" aria-labelledby="week-title">
+        <h2 id="week-title">This week</h2>
+        <div id="calendar" class="week"></div>
+      </section>
+
+      <section id="model" class="panel" aria-labelledby="model-title">
+        <h2 id="model-title">Model</h2>
+        <div id="network-graph" class="network"></div>
+        <div class="field cpd-field">
+          <label for="node-select">Probability table</label>
+          <div class="select"><select id="node-select"></select></div>
+        </div>
+        <div id="cpd-table" class="cpd"></div>
+        <p class="note">Probabilities come from simulated students.</p>
+      </section>
+    </main>
+  </div>
 </div>
 </body>
 </html>
