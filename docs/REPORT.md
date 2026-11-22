@@ -4,7 +4,9 @@
 
 Sultan Aldeiro and John Kwon
 
-November 12, 2026
+November 12, 2026 (revised November 22, 2026)
+
+Code and data: https://github.com/AldeiroSultan/COSC329-Project
 
 ## 1. Project aim
 
@@ -209,21 +211,94 @@ The longer demo runs the planner once a day for 14 days. It starts both students
 
 The struggling student improves in the simulation because light study starts early and later quiz evidence changes. The pass estimate still drops slightly as the exam approaches because stress rises. This shows how evidence and time interact in the model. It does not prove that one hour per day would have these effects for a real student, since the simulated improvement follows the same kind of boost assumptions used by the planner.
 
-### Automated checks
+### Testing
 
-The final test run passes 144 tests. Coverage includes network structure and normalization, fixed-seed data generation, sparse-data smoothing, agreement with pgmpy, inference, all four decisions, calendar scheduling and deletion guards, the scenario demos, figure generation, and the dashboard API. API tests check both probability models, invalid evidence, missing data, and isolation between requests. Google API tests use a fake service; the live check above is separate.
+**Result.** The full suite has **152 tests and all pass** (`python -m pytest -q`). The same command runs automatically on every pull request and push through the `Tests` GitHub Actions workflow, which installs `requirements.txt` on a clean Ubuntu machine with Python 3.14 (https://github.com/AldeiroSultan/COSC329-Project/actions). The workflow was green on `main` when this report was written.
 
-The CLI demo reproduces five expected scenario actions and writes calendar exports without Google credentials. These checks support the implementation's consistency. They are not an evaluation of prediction accuracy on held-out real student data.
+**Testing criteria.** A test passes when:
 
-## 9. Limitations and possible improvements
+1. *Exact checks* hold: probability tables are valid (every CPT column sums to 1 and no learned probability is exactly 0), our Laplace estimates equal pgmpy's K2 estimator (largest difference below 1e-9; we observe 0), and expected utilities match a hand calculation (for example 22.4 for intense and 21.8 for light for the struggling student in the hand-crafted model).
+2. *Statistical checks* hold within a stated tolerance: simulated frequencies and learned probabilities are within 0.03 to 0.05 of the probabilities in the generating functions.
+3. *Behaviour checks* hold: the five demo students choose their expected actions under both the learned and the hand-crafted model, at least three different actions appear, and the plan changes as the exam approaches.
+4. *Safety and reproducibility checks* hold: the planner never deletes an event it did not create, a fixed seed gives an identical CSV, and the committed learned-CPT file matches the committed CSV.
+
+**Test cases.**
+
+| Test file | Tests | What it checks |
+|---|---|---|
+| `test_network.py` | 5 | 13 nodes; model passes pgmpy's validity check; every CPT column sums to 1; ExamSuccess, Mastery and Sleep values match the hand-crafted tables |
+| `test_simulate.py` | 10 | Fixed seed reproduces the data; columns and state names; DaysLeft buckets; frequencies near the generating functions; pass rate rises with mastery and falls with stress; every parent configuration has more than 10 rows; committed CSV matches the documented schema and seed |
+| `test_learning.py` | 24 | Laplace formula on a worked example; unseen parent configuration gives a uniform column; alpha = 0 gives maximum likelihood; unknown states rejected; nine CPTs learned; agreement with pgmpy K2 for each of the nine; learned model valid; learned vs hand-crafted tolerance on all 72 cells; sparse ExamSuccess table; committed JSON matches committed CSV |
+| `test_inference.py` | 9 | Evidence conversion; difficulty-only posterior equals the CPT; Bayes-rule value 0.944; low quiz lowers and high quiz raises mastery; poor sleep raises stress; fewer days raise stress and lower the pass chance |
+| `test_decision.py` | 29 | Effect of each action (rest changes only stress, intense boosts all concepts scaled by urgency, focused targets the weakest concept, stress clipped to [0, 1]); expected utility by hand; time cost per hour; argmax; five students on two models; at least three distinct actions; struggling student studies more than the advanced one; pushed harder as the exam nears |
+| `test_calendar.py` | 12 | In-memory overlap and sorting; only `[BayesPlanner]` events cleared or deleted; exam detection; `.ics` save and load including all-day and UTC events; Google client request bodies, time zone, paging and delete guard (fake service); missing credentials message |
+| `test_planner.py` | 13 | Five-hour block for the struggling student; days left taken from the calendar; rest day clears only planner sessions; re-running replaces instead of stacking; free-slot search and the full-day fallback; past exam rejected; several exams; `.ics` export |
+| `test_scenarios.py` | 16 | Five students; 14-day run counts down, is deterministic and changes the plan; mastery rises and quizzes flip; calendar contents; demo output and command-line options |
+| `test_sensitivity.py` | 8 | Baseline decisions; configuration restored after a run, even after an error; a huge time cost gives only rest days; weaker study benefit never makes a plan heavier; the advanced student is robust |
+| `test_api.py` | 25 | Dashboard API: five students on both models with action and event duration; nine kinds of invalid input rejected; exam today and unknown observations; requests isolated from each other; network tables complete and normalised; missing data gives a clear error; credentials are never served |
+| `test_viz.py` | 1 | The `figures` command writes three valid images |
+
+**Data used.** `data/processed/students.csv` (5,000 simulated students, seed 329; https://github.com/AldeiroSultan/COSC329-Project/blob/main/data/processed/students.csv) and `data/processed/learned_cpts.json` are committed. The five test students and their expected actions are defined in `study_planner/scenarios.py`. Smaller tables, hand-written `.ics` text and a fake Google service are built inside the tests, so no test needs a network connection or a Google account.
+
+**What the tests do not cover.** They do not measure prediction accuracy on real students, because we have no real data. They do not exercise the dashboard's JavaScript (the API behind it is tested). The live Google Calendar flow was checked by hand on November 12 (§7) rather than automatically. The checks show that the implementation is consistent and behaves as designed, not that its recommendations are right for a real student.
+
+## 9. Discussion, limitations and possible improvements
+
+### Were the results expected?
+
+Mostly yes. The learned probabilities are close to our hand-crafted ones (mean absolute difference 0.020 over 72 cells) and agree exactly with pgmpy's K2 estimator. That is what we should expect: the data came from functions we designed to sit near the hand-crafted values, and with at least 236 rows in every parent configuration, add-one smoothing moves an estimate by less than half a percentage point (by (1 - 2p) / (N + 2), at most 1/238). The five students also received the actions we would predict from their evidence: study hard when little is mastered and the exam is close, rest when well prepared, target the one weak concept, and go gently when stress is high. The choices are identical under the hand-crafted and the learned model. This agreement shows the code is consistent. It does not show that the recommendations are right for real students.
+
+### What was unusual?
+
+**Stress with 4-10 days left moved from .45 to .57.** The hand-crafted .45 equals the generating curve's value at 10 days, the far end of that bucket, so it understated the bucket as a whole. Averaged over days 4 to 10 the curve is about .58, and the data gave .57 (for the other buckets the curve averages .775 and .23, against learned .78 and .24). This is a discretisation effect: the CPT of a bucketed variable depends on how the real values are spread inside the bucket, so the learned number would change if real students' days-until-exam were distributed differently.
+
+**The struggling student with two weeks left is not told to cram.** The planner schedules one hour a day, the simulated quizzes turn from low to high on day 4, and the expected utility jumps from 21.6 to 59.3. This looked wrong at first. With 14 days left the urgency factor is 0.3, so a five-hour block earns little credit and costs five hours, while the simulated student closes 20% of the remaining gap per light session. The behaviour is the intended trade of a little effort now for less cramming stress later, but it follows from learning assumptions we set ourselves.
+
+**The advanced student's pass estimate falls from 87% to 82% over two weeks** with no change in mastery. Fewer days left raise stress, and stress lowers the chance of passing.
+
+### Interpreting the results with course ideas
+
+* **Conditional independence.** A quiz on concept 1 does not change the belief about concept 2 (checked in `test_inference.py`). The only path between the two mastery nodes runs through ExamSuccess, a collider, and while the exam outcome is unobserved that path is blocked (d-separation). If the outcome were observed, as it is in the learning data, the concepts would become dependent ("explaining away"). We never observe it when deciding.
+* **Diagnostic reasoning.** Quizzes and sleep are effects of mastery and stress, yet they are our evidence about those causes. Bayes' rule turns them around: a high quiz on an easy concept lifts mastery from .80 to .944.
+* **Maximum expected utility.** The decision depends only on the ordering of the four expected utilities. The top two are 0.3 to 1.7 points apart on a 0-100 scale, so choosing the runner-up would cost little under the model. The same closeness is what makes the choice sensitive, as the next experiment shows.
+* **Smoothing.** Laplace smoothing trades a little bias (estimates pulled toward uniform) for protection against zero probabilities. With thousands of rows the bias is negligible; with sparse real data it would matter.
+
+### How much do the decisions depend on our assumptions?
+
+The action effects, urgency factors and utilities are hand-set, so we changed one at a time by roughly 25% and counted how many of the five students' decisions changed (`python -m study_planner.cli sensitivity`, learned model).
+
+| Assumption (baseline) | Setting | Decisions that change |
+|---|---|---|
+| Cost per study hour (1.0) | 0.5 | none |
+| | 2.0 | 4 of 5: struggling and one-weak-spot become light; average-early and burnt-out become rest |
+| Utility of passing under high stress (85) | 70 | 3 of 5: struggling and one-weak-spot become light; burnt-out becomes rest |
+| | 95 | none |
+| Stress added by an intense block (+0.20) | +0.10 or +0.30 | none |
+| All mastery boosts | x0.75 | 4 of 5, as for a time cost of 2.0 |
+| | x1.25 | none |
+| Urgency factors (1.0 / 0.7 / 0.3) | x0.75 | 4 of 5, as for a time cost of 2.0 |
+| | x1.25 | none |
+
+Decisions changed in 4 of the 10 settings (15 of 50 student decisions). Three patterns stand out. Every change moves to a *lighter* action, and none moves to a heavier one: the planner already studies as much as the assumptions justify. The advanced student's rest day never changes, so strong evidence gives a robust decision while the close calls (one weak spot, burnt-out) are the fragile ones. And the amount of stress an intense block adds did not matter at all within +/-0.10, so that number is not worth more tuning effort. The hand-crafted model gives the same pattern (16 of 50 decisions).
+
+### Limitations
 
 The main limitation is the data. We generated it from assumptions close to the starting CPTs, so agreement between learned and hand-crafted values is expected. The model has not been evaluated against real quiz histories or exam outcomes. One improvement would be to collect consented student records and evaluate predictions on a separate test set, including whether predicted probabilities match observed outcomes.
 
-The action effects are another weak point. We set the mastery boosts, stress changes, urgency factors, and utility scores ourselves. Learning the CPTs does not learn how much a five-hour study block actually helps. Since some utility margins are small, changing these assumptions could change the recommendation. A sensitivity analysis would show which decisions stay the same and which depend heavily on a particular setting.
+The action effects are another weak point. We set the mastery boosts, stress changes, urgency factors, and utility scores ourselves. Learning the CPTs does not learn how much a five-hour study block actually helps. Since some utility margins are small, changing these assumptions can change the recommendation, as the sensitivity experiment above shows.
 
 The network also simplifies the student. It has only three equally weighted concepts, binary mastery and stress, and no direct memory of past sessions. In the two-week simulation, improvement enters the network through new quiz results; fatigue and stress do not accumulate across days. A model with time-dependent mastery and fatigue could represent this more realistically.
 
 The calendar handles exams separately rather than optimizing a complete workload across courses. It also falls back to 10:00 when the day is full. A practical improvement would be to return a scheduling conflict and let the student choose another time or shorter session. The dashboard currently previews today only, and its learned model is cached until the server restarts after data changes.
+
+Learning also has a limit we should state plainly. Our CSV records each student's true mastery, so counting is enough to learn the CPTs. Real data would only contain quizzes, sleep and exam outcomes, which makes mastery a hidden variable. Then the CPTs cannot be found by counting, and we would need expectation-maximization (EM), alternating between inference over the hidden mastery (the variable elimination we already have) and re-estimating the tables. Our learning step is therefore easier than the real problem.
+
+### Ideas for improvement
+
+* **Parameter settings.** Elicit or fit the boosts, urgency factors and utilities instead of choosing them. The sensitivity table says where to spend the effort: the time cost, the utility of passing under stress, the mastery boosts and the urgency factors matter, while the stress added by an intense block does not. Using more DaysLeft states, or a continuous days variable, would remove the bucket effect described above.
+* **Algorithm tweaks.** Replace the uniform Laplace prior with a Dirichlet prior centred on the hand-crafted CPTs (an informative prior with an equivalent sample size), so sparse real data shrinks toward our expert values instead of toward 0.5. Add EM for hidden mastery. Replace the independent-marginals shortcut in the expected-utility calculation with a decision network (influence diagram) in which the action is a node.
+* **Experimental setup.** Collect consented student records, evaluate on a held-out set with a calibration plot, and compare the planner with simple baselines (always light, always intense, a fixed rule) over the 14-day simulation using the same utility.
+* **A different technique.** A dynamic Bayesian network would let mastery and fatigue carry over from day to day, so the model remembers past sessions. Planning over the whole two weeks as a Markov decision process or POMDP, instead of choosing greedily one day at a time, could also plan a rest day before a hard day.
 
 We think the project shows the connection between evidence, inference, utility, and an actual calendar action clearly. The next step would be to test and improve the assumptions behind those decisions, rather than treating a working implementation as evidence that the recommendations are already reliable for real students.
 
@@ -237,6 +312,7 @@ python -m study_planner.cli simulate
 python -m study_planner.cli learn
 python -m pytest -q
 python -m study_planner.cli demo
+python -m study_planner.cli sensitivity
 python -m study_planner.cli figures
 python -m study_planner.cli serve
 ```
@@ -250,6 +326,7 @@ The dashboard is served at http://127.0.0.1:8000. The offline demo writes `.ics`
 - `study_planner/learning.py`, `inference.py`, and `decision.py`: parameter estimation, queries, and expected utility.
 - `study_planner/planner.py` and `calendar_api/`: scheduling and calendar backends.
 - `study_planner/scenarios.py` and `demo.py`: student scenarios and two-week simulation.
+- `study_planner/sensitivity.py`: the one-at-a-time sensitivity experiment in §9.
 - `study_planner/api.py`, `web/`, and `tests/`: dashboard and automated verification.
 
 The implementation uses pgmpy for the Bayesian network and exact inference, FastAPI for the API, Chart.js for the dashboard chart, matplotlib for report figures, and Google's Calendar API client for live events. Dashboard design guidance and attribution are documented in `docs/DASHBOARD.md`.
