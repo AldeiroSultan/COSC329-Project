@@ -18,16 +18,27 @@ pushes and opens the PR from VS Code / GitHub.
 
 1. **Find the spec** for that branch in `docs/PLAN.md` → "Branch specs". If it
    isn't there, stop and ask.
-2. **Make sure we're on the right branch.** Run `git status --short --branch`.
+2. **Start from an up-to-date staging, on the right branch.** Run `git status --short --branch`.
    * If the working tree has uncommitted changes from another branch, stop and
      tell the user (don't stash or discard their work).
-   * If not on `<BRANCH>`, switch to it and bring it up to date:
+   * Pull staging first (this only changes the local checkout):
      ```
      git fetch origin
-     git checkout <BRANCH>            # or: git checkout -b <BRANCH> origin/staging if it doesn't exist
-     git merge origin/staging         # falls back to local staging if no remote branch yet
+     git switch staging
+     git pull origin staging
+     ```
+   * Then get on `<BRANCH>`:
+     ```
+     git checkout -b <BRANCH> staging     # new branch, created from the local staging just pulled
+     git switch <BRANCH>                  # ...or, if the branch already exists locally:
+     git merge staging
      ```
      Tell the user which branch they were on and that you moved them.
+   * **Never** create the branch from the remote name (`git checkout -b <BRANCH> origin/staging`).
+     That makes the branch *track* `origin/staging`, and VS Code's **Sync Changes** would then
+     push straight to staging, skipping the PR. This happened once with TI-00006.
+   * Check `git branch -vv`: the branch must track nothing yet, or `origin/<BRANCH>`, never
+     `origin/staging` or `origin/main`. If it does, run `git branch --unset-upstream` and tell the user.
    * If the merge conflicts, stop and explain the conflict instead of guessing.
    * Check the spec's "Depends on" branches are already in staging; if not, warn the user.
 3. **Implement** everything in the spec. Replace `raise NotImplementedError` stubs,
@@ -42,6 +53,17 @@ pushes and opens the PR from VS Code / GitHub.
 7. **Reply in chat** with the commit message and the PR message (template below)
    in separate code blocks, ready to copy-paste. Also save them to
    `.pr-drafts/<BRANCH>.md` (git-ignored) as a backup.
+
+## What the teammate does afterwards (the PR flow)
+
+1. Paste the commit message in VS Code, commit, then publish the branch the first time with
+   `git push -u origin <BRANCH>` (afterwards **Sync Changes** is safe). Before syncing, check the
+   status bar / `git branch -vv`: the branch must say `origin/<BRANCH>`, not `origin/staging`.
+2. On GitHub open a PR with base **`staging`** ← compare **`<BRANCH>`** and paste the PR message.
+3. After it is merged, update local staging (`git switch staging`, `git pull origin staging`)
+   before starting the next branch.
+4. When a set of features is done, open a PR with base **`main`** ← compare **`staging`**.
+5. Nobody pushes directly to `staging` or `main`; they only change through PRs.
 
 ## Commit / PR message template
 
