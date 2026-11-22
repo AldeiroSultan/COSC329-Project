@@ -6,7 +6,7 @@ Suggested length: 4-5 minutes. This is a recording outline, not a claim that a r
 
 - Open the repository root containing `requirements.txt` in VS Code.
 - Activate `.venv`, or use `.\.venv\Scripts\python.exe` instead of `python` below.
-- Run `python -m pytest -q`. The current result is 144 passing tests.
+- Run `python -m pytest -q`. The current result is 152 passing tests.
 - Run `python -m study_planner.cli serve --port 8018`, then open http://127.0.0.1:8018 in a browser. Leave this terminal running.
 - Keep a second terminal for the CLI demo. Do not display credential or token files.
 - Use the offline `.ics` demonstration unless you intend to change your live calendar. The Google commands below replace today's planner-tagged sessions.
@@ -74,7 +74,7 @@ Refresh Calendar and show that the planner block is gone. Both commands affect t
 
 ## 4:00-4:40 - Explain the limits
 
-> The main limitation is that the data and study effects are simulated. The action boosts and utility values are assumptions we chose, and some action scores are close. One improvement would be to test with real student records and check how recommendations change when we vary those assumptions. The scheduler also needs a better response when the day is full, because it currently falls back to 10:00.
+> The main limitation is that the data and study effects are simulated. The action boosts and utility values are assumptions we chose, and some action scores are close. We measured this: making studying 25% less valuable flips four of the five recommendations to a lighter action, while the advanced student never changes. One improvement would be to test with real student records. The scheduler also needs a better response when the day is full, because it currently falls back to 10:00.
 
 ## Submission steps still requiring a person
 

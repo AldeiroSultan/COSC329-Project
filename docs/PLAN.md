@@ -116,6 +116,13 @@ Each spec is what "done" means. Claude reads this section when you ask it to do 
 * Complete `docs/REPORT.md` (John assembles + figures, Sultan writes model
   sections), record a short demo (CLI + dashboard + calendar), staging → main.
 
+### TI-00006 — Deliverable gaps (added Nov 22 after checking the grading rubric) · **Sultan**
+* README: project/bug status, file structure mapped to features, macOS/Linux setup.
+* Report: test table with testing criteria and data links; a Discussion section
+  (expected vs unusual results, course-concept interpretation, sensitivity analysis,
+  improvements); repo link; PDF export (`scripts/build_report_pdf.py`).
+* New `study_planner/sensitivity.py` + `cli sensitivity` + 8 tests (152 total).
+
 ---
 
 ## Calendar
