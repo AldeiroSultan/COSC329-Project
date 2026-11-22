@@ -12,13 +12,19 @@ MF-0000N  ← main features   (branched from staging)
 TI-0000N  ← tasks / support (branched from staging)
 ```
 
-1. Tell Claude: *"Please do MF-00003"*. Claude puts you on that branch (merging
-   staging in), makes the changes and leaves them **uncommitted** in Source Control.
+1. Tell Claude: *"Please do MF-00003"*. Claude pulls `staging`, creates the branch from it
+   (`git checkout -b <BRANCH> staging`, or merges `staging` into an existing one), makes the
+   changes and leaves them **uncommitted** in Source Control.
 2. Claude replies with the commit message and PR message.
-3. You paste the commit message in VS Code, commit, push, and open the PR into
-   **staging** with the PR message.
-4. The other person skims the PR and merges.
-5. Milestones: staging → main on **Nov 3** (end of week 1) and **Nov 9** (final).
+3. You paste the commit message in VS Code, commit, publish the branch
+   (`git push -u origin <BRANCH>`), and open a PR with base **staging** ← compare your branch.
+4. The other person skims the PR and merges. Then `git switch staging` and
+   `git pull origin staging` before the next branch.
+5. When a set of features is done, open a PR with base **main** ← compare **staging**
+   (the last one before the final submission).
+
+Never create a branch from `origin/staging` (it would track staging, and Sync Changes would
+push there), and never push directly to `staging` or `main`.
 
 ---
 
@@ -115,6 +121,13 @@ Each spec is what "done" means. Claude reads this section when you ask it to do 
 ### TI-00005 — Final report & demo recording · **Sultan + John** · Nov 8–9
 * Complete `docs/REPORT.md` (John assembles + figures, Sultan writes model
   sections), record a short demo (CLI + dashboard + calendar), staging → main.
+
+### TI-00006 — Deliverable gaps (added Nov 22 after checking the grading rubric) · **Sultan**
+* README: project/bug status, file structure mapped to features, macOS/Linux setup.
+* Report: test table with testing criteria and data links; a Discussion section
+  (expected vs unusual results, course-concept interpretation, sensitivity analysis,
+  improvements); repo link; PDF export (`scripts/build_report_pdf.py`).
+* New `study_planner/sensitivity.py` + `cli sensitivity` + 8 tests (152 total).
 
 ---
 

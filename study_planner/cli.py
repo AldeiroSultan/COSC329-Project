@@ -112,6 +112,14 @@ def cmd_figures(args: argparse.Namespace) -> None:
         print(f"Saved: {path}")
 
 
+def cmd_sensitivity(args: argparse.Namespace) -> None:
+    """Show how much the five demo decisions depend on our hand-set assumptions."""
+    from study_planner.scenarios import get_model
+    from study_planner.sensitivity import format_report, run_sensitivity
+
+    print(format_report(*run_sensitivity(get_model(args.handcrafted))))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="study_planner")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -134,6 +142,10 @@ def main() -> None:
     figures = sub.add_parser("figures", help="generate report network, CPT and utility charts")
     figures.add_argument("--out", help="output directory (default: docs/figures/)")
     figures.set_defaults(func=cmd_figures)
+
+    sensitivity = sub.add_parser("sensitivity", help="change one assumption at a time and see which decisions flip")
+    sensitivity.add_argument("--handcrafted", action="store_true", help="use hand-crafted instead of learned CPTs")
+    sensitivity.set_defaults(func=cmd_sensitivity)
 
     args = parser.parse_args()
     args.func(args)
