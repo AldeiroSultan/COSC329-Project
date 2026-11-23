@@ -6,7 +6,7 @@ Suggested length: 4-5 minutes. This is a recording outline, not a claim that a r
 
 - Open the repository root containing `requirements.txt` in VS Code.
 - Activate `.venv`, or use `.\.venv\Scripts\python.exe` instead of `python` below.
-- Run `python -m pytest -q`. The current result is 152 passing tests.
+- Run `python -m pytest -q`. The current result is 179 passing tests.
 - Run `python -m study_planner.cli serve --port 8018`, then open http://127.0.0.1:8018 in a browser. Leave this terminal running.
 - Keep a second terminal for the CLI demo. Do not display credential or token files.
 - Use the offline `.ics` demonstration unless you intend to change your live calendar. The Google commands below replace today's planner-tagged sessions.
@@ -29,7 +29,7 @@ Mention that the learned tables agree with pgmpy's K2 estimator and that the tes
 
 ## 1:15-2:25 - Compare student profiles
 
-In the dashboard, select each profile and click **Calculate today's plan**:
+The quickest way to show this is the **?** button at the top right of the dashboard: choose **Struggling student**, then **Well-prepared student**. Each guided example fills in the evidence, calculates, explains each result and ends with a summary, so it doubles as your narration. To do it by hand instead, select each profile and click **Calculate plan**:
 
 1. **Struggling:** intense, 5 hours. Show all four utility values; intense is 23.4 and light is 22.0 with the learned model.
 2. **Advanced:** rest, 0 hours. Point out that no study session is scheduled.
