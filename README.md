@@ -17,7 +17,7 @@ light 1h review / rest day) and writes it to Google Calendar or an `.ics` file.
 ## Project status
 
 Every feature of the 2-person option is implemented, demonstrated and tested.
-**167 automated tests pass** and the `Tests` workflow is green on `main`.
+**179 automated tests pass** and the `Tests` workflow is green on `main`.
 
 | Feature | Status | Where | Tests |
 |---|---|---|---|
@@ -29,7 +29,7 @@ Every feature of the 2-person option is implemented, demonstrated and tested.
 | Calendar API: Google Calendar, `.ics`, in-memory | Done (live Google run verified once, Nov 12) | `calendar_api/`, `planner.py`, [GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) | `test_calendar.py` (12), `test_planner.py` (13) |
 | Student scenarios and 14-day adaptation demo | Done | `scenarios.py`, `demo.py` | `test_scenarios.py` (16) |
 | Sensitivity analysis of the decisions | Done | `sensitivity.py` | `test_sensitivity.py` (8) |
-| Web dashboard (extra): light/dark themes, guided tour and three guided examples | Done | `api.py`, `web/`, [DASHBOARD.md](docs/DASHBOARD.md) | `test_api.py` (25), `test_dashboard_assets.py` (15) |
+| Web dashboard (extra): light/dark themes, guided tour and three guided examples | Done | `api.py`, `web/`, [DASHBOARD.md](docs/DASHBOARD.md) | `test_api.py` (25), `test_dashboard_assets.py` (27) |
 | Report figures | Done | `viz.py`, `docs/figures/` | `test_viz.py` (1) |
 
 **Bugs.** No failing tests and no open bugs are known. The items below are known
@@ -62,7 +62,7 @@ limitations, not defects:
 | Data simulation / CSV | numpy, pandas |
 | CPT learning | own Laplace-smoothed counting (checked against pgmpy's K2 estimator) |
 | Calendar | Google Calendar API v3 (`google-api-python-client`), `.ics` fallback (`icalendar`) |
-| Dashboard | FastAPI + plain HTML/CSS/JS (no build step, no external libraries) |
+| Dashboard | FastAPI + plain HTML/CSS/JS (no build step, no JavaScript libraries); Lexend Deca font from Google Fonts |
 | Figures | matplotlib, networkx |
 | Tests | pytest |
 
@@ -94,7 +94,7 @@ python -m pytest -q
 
 If pgmpy fails to install on your Python version, use Python 3.12 instead
 (`py -3.12 -m venv .venv` on Windows, `python3.12 -m venv .venv` elsewhere).
-Expected result: `167 passed` (plus one harmless warning).
+Expected result: `179 passed` (plus one harmless warning).
 
 ## Automated tests
 
@@ -172,7 +172,7 @@ is needed.
 ├── scripts/build_report_pdf.py     renders docs/REPORT.md to the PDF
 ├── web/                            dashboard front end (index.html, styles.css, app.js, tour.js)
 ├── data/processed/                 students.csv (5,000 rows), learned_cpts.json
-├── tests/                          167 tests, one file per feature (see Project status)
+├── tests/                          179 tests, one file per feature (see Project status)
 ├── docs/                           MODEL, DATA, PLAN, REPORT (.md and .pdf), GOOGLE_SETUP, DEMO_GUIDE,
 │                                   DASHBOARD, and figures/
 └── output/                         generated .ics calendars (git-ignored)
@@ -199,7 +199,7 @@ The first time you open it, a short tour points out each control. To see it agai
 the planner work through an example, press the **?** button at the top right: **App tour**, or
 one of three **guided examples** (struggling student, well-prepared student, one weak concept).
 A guided example fills in the evidence, presses Calculate, explains each result as it appears and
-ends with a summary. Use Next or the arrow keys, and Esc to leave.
+ends with a summary card: the recommendation as a headline, a short explanation, and the numbers as gauges and score bars. Use Next or the arrow keys, and Esc to leave.
 
 Choose one of the five student profiles or enter custom difficulty, quiz, sleep,
 and exam-date evidence, then click **Calculate plan**. The dashboard
@@ -213,5 +213,5 @@ This preview uses an isolated in-memory calendar; it does not read OAuth tokens
 or modify Google Calendar. Future days are not forecast. Dates and times use
 America/Vancouver. Learned models are cached until server restart: restart after
 changing the student CSV. If the CSV is missing, run `simulate` or select the
-hand-crafted model. The page uses no external libraries or fonts, so it works offline.
+hand-crafted model. The page uses no JavaScript libraries. Its one web font, Lexend Deca, comes from Google Fonts; offline, the system font is used instead and everything else still works.
 See [dashboard design notes](docs/DASHBOARD.md) for the design and scope.

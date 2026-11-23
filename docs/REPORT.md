@@ -171,7 +171,7 @@ The scheduler looks for the earliest available start in 30-minute steps from 10:
 
 The dashboard uses the same inference and decision code. It includes five student profiles, custom inputs, a learned/hand-crafted model selector, belief bars, an action-score chart and table, and a network/CPT inspector. Its seven-day calendar shows today's preview only; other days stay empty. It uses a fresh in-memory calendar for each request and does not write to Google Calendar.
 
-The interface is built so that someone who has never seen the model can use it. It has a light and a dark theme, and its controls are raised and pressed-in surfaces (a neumorphic style). A short tour highlights each control on the first visit. The **?** button replays it and also offers three guided examples (struggling student, well-prepared student, one weak concept). A guided example fills in the evidence, presses Calculate, explains each result as it appears, and ends with a summary of the student, the beliefs, the decision and why it was made. The explanations are generated from the model's actual output, not written in advance. Design notes are in `docs/DASHBOARD.md`.
+The interface is built so that someone who has never seen the model can use it. It has a light theme (warm ivory with forest green) and a dark theme (deep green), all text is set in Lexend Deca (a clean geometric sans-serif), and its controls are raised and pressed-in surfaces (a neumorphic style). A short tour highlights each control on the first visit. The **?** button replays it and also offers three guided examples (struggling student, well-prepared student, one weak concept). A guided example fills in the evidence, presses Calculate, explains each result as it appears, and ends with a summary card: the recommendation as a headline, two short labelled paragraphs that say what the scores mean and flag a close call, and the numbers as graphics (pass-chance and stress gauges, the study time, and the four action scores as bars). The explanations are generated from the model's actual output, not written in advance. Design notes are in `docs/DASHBOARD.md`.
 
 ### Live calendar check
 
@@ -215,7 +215,7 @@ The struggling student improves in the simulation because light study starts ear
 
 ### Testing
 
-**Result.** The full suite has **167 tests and all pass** (`python -m pytest -q`). The same command runs automatically on every pull request and push through the `Tests` GitHub Actions workflow, which installs `requirements.txt` on a clean Ubuntu machine with Python 3.14 (https://github.com/AldeiroSultan/COSC329-Project/actions). The workflow was green on `main` when this report was written.
+**Result.** The full suite has **179 tests and all pass** (`python -m pytest -q`). The same command runs automatically on every pull request and push through the `Tests` GitHub Actions workflow, which installs `requirements.txt` on a clean Ubuntu machine with Python 3.14 (https://github.com/AldeiroSultan/COSC329-Project/actions). The workflow was green on `main` when this report was written.
 
 **Testing criteria.** A test passes when:
 
@@ -239,7 +239,7 @@ The struggling student improves in the simulation because light study starts ear
 | `test_sensitivity.py` | 8 | Baseline decisions; configuration restored after a run, even after an error; a huge time cost gives only rest days; weaker study benefit never makes a plan heavier; the advanced student is robust |
 | `test_api.py` | 25 | Dashboard API: five students on both models with action and event duration; nine kinds of invalid input rejected; exam today and unknown observations; requests isolated from each other; network tables complete and normalised; missing data gives a clear error; credentials are never served |
 | `test_viz.py` | 1 | The `figures` command writes three valid images |
-| `test_dashboard_assets.py` | 15 | Front-end static checks: pages and scripts are served; every element, tour target and icon the script uses exists; no emoji; both themes meet WCAG AA text contrast and define the same colours; theme is applied before first paint; the three guided examples match real scenarios and their expected actions |
+| `test_dashboard_assets.py` | 27 | Front-end static checks: pages and scripts are served; every element, tour target and icon the script uses exists; no emoji; both themes meet WCAG AA text contrast and define the same colours; theme is applied before first paint; the three guided examples match real scenarios and their expected actions |
 
 **Data used.** `data/processed/students.csv` (5,000 simulated students, seed 329; https://github.com/AldeiroSultan/COSC329-Project/blob/main/data/processed/students.csv) and `data/processed/learned_cpts.json` are committed. The five test students and their expected actions are defined in `study_planner/scenarios.py`. Smaller tables, hand-written `.ics` text and a fake Google service are built inside the tests, so no test needs a network connection or a Google account.
 

@@ -1,10 +1,23 @@
-import { Tour } from './tour.js';
+import { Tour } from './tour.js?v=8';
 
 const $ = (id) => document.getElementById(id);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const ACTION_NAME = { intense: 'Intense', focused: 'Focused', light: 'Light', rest: 'Rest' };
+const ACTION_TITLE = { intense: 'Intense study block', focused: 'Focused session', light: 'Light review', rest: 'Rest day' };
 const ACTION_PHRASE = { intense: 'an intense study block', focused: 'a focused session', light: 'a light review', rest: 'a rest day' };
+const ACTION_LEAD = {
+  intense: (p) => `Do an intense ${p.hours}-hour study block today.`,
+  focused: (p) => `Do a focused ${p.hours}-hour session on Concept ${conceptNumber(p.target_concept)}.`,
+  light: (p) => `Do a light ${p.hours}-hour review today.`,
+  rest: () => 'Take a rest day today.',
+};
+const ACTION_MEANING = {
+  intense: () => 'a long session is worth the extra stress and the hours it takes',
+  focused: (p) => `putting the time into Concept ${conceptNumber(p.target_concept)}, the weakest one, pays off more than spreading it across everything`,
+  light: () => 'a short review is the best balance, keeping things moving without adding much stress',
+  rest: () => 'more study would cost more in stress and time than it earns, so the best move is to rest',
+};
 const PROFILE_LABEL = {
   struggling: 'Struggling student',
   advanced: 'Well-prepared student',
@@ -13,13 +26,14 @@ const PROFILE_LABEL = {
   burnt_out: 'Burnt out',
 };
 
-/* The three guided examples. The takeaway is only shown when the planner picks the
-   action the example is meant to illustrate, so it can never contradict the result. */
-const GUIDED = [
-  { name: 'struggling', takeaway: 'Almost nothing is mastered and the exam is close, so a long session is worth its stress and time cost.' },
-  { name: 'advanced', takeaway: 'Already prepared with time to spare: extra study would add stress and cost more than it earns, so the planner clears the day.' },
-  { name: 'one_weak_spot', takeaway: 'Only one concept is weak, so a single focused session on it beats reviewing everything.' },
-];
+/* The three guided examples. Their explanations are generated from the planner's real result. */
+const ACTION_ICON = {
+  intense: 'bolt',
+  focused: 'target',
+  light: 'leaf',
+  rest: 'moon',
+};
+const GUIDED = ['struggling', 'advanced', 'one_weak_spot'];
 
 const DIFFICULTY = [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']];
 const QUIZ = [['', 'Unknown'], ['low', 'Low'], ['high', 'High']];
@@ -86,6 +100,9 @@ function segmented(name, label, options, selected) {
   const group = el('div', 'segmented');
   group.setAttribute('role', 'radiogroup');
   group.setAttribute('aria-label', label);
+  const thumb = el('span', 'thumb');
+  thumb.setAttribute('aria-hidden', 'true');
+  group.append(thumb);
   options.forEach(([value, text]) => {
     const input = el('input');
     input.type = 'radio';
@@ -98,6 +115,31 @@ function segmented(name, label, options, selected) {
     group.append(input, labelEl);
   });
   return group;
+}
+
+/* Slide the raised pill under the checked option. The first placement and any resize are instant. */
+function placeThumb(group, animate = true) {
+  const thumb = group.querySelector('.thumb');
+  const checked = group.querySelector('input:checked');
+  const label = checked && checked.nextElementSibling;
+  if (!thumb || !label || !label.offsetWidth) return;
+  const instant = !animate || !group.dataset.ready;
+  if (instant) group.classList.add('is-instant');
+  thumb.style.width = `${label.offsetWidth}px`;
+  thumb.style.transform = `translateX(${label.offsetLeft}px)`;
+  group.dataset.ready = '1';
+  if (instant) {
+    void thumb.offsetWidth;
+    group.classList.remove('is-instant');
+  }
+}
+
+function initSegmented() {
+  const groups = [...document.querySelectorAll('.segmented')];
+  const observer = new ResizeObserver((entries) => entries.forEach((entry) => placeThumb(entry.target, false)));
+  groups.forEach((group) => observer.observe(group));
+  requestAnimationFrame(() => groups.forEach((group) => placeThumb(group, false)));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => groups.forEach((group) => placeThumb(group, false)));
 }
 
 function field(label, control) {
@@ -144,7 +186,9 @@ const checkedValue = (name) => $('plan-form').querySelector(`input[name="${name}
 
 function setChoice(name, value) {
   const input = $('plan-form').querySelector(`input[name="${name}"][value="${value ?? ''}"]`);
-  if (input) input.checked = true;
+  if (!input) return;
+  input.checked = true;
+  placeThumb(input.closest('.segmented'));
 }
 
 function readForm() {
@@ -182,19 +226,56 @@ function markStale() {
 
 /* ---------- rendering ---------- */
 
-function renderStats(result) {
-  $('stat-action').textContent = ACTION_NAME[result.best_action];
-  $('stat-action-sub').textContent = result.best_action === 'focused' ? `Concept ${conceptNumber(result.target_concept)}` : '';
-  $('stat-hours').textContent = hoursText(result.hours);
-  $('stat-session').textContent = result.events.length ? timeRange(result.events[0]) : 'No session';
-  $('stat-pass').textContent = pct(result.posteriors.p_pass);
-  $('stat-stress').textContent = pct(result.posteriors.p_stress_high);
-  $('stat-days').textContent = String(result.days_until_exam);
-  $('stat-exam').textContent = dateLabel(result.exam_date, { weekday: 'short', month: 'short', day: 'numeric' });
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Run `apply` after the next paint so CSS transitions start from the old value. The timer is a
+   fallback for hidden tabs, where animation frames are paused. */
+function afterPaint(apply) {
+  let done = false;
+  const once = () => { if (!done) { done = true; apply(); } };
+  requestAnimationFrame(() => requestAnimationFrame(once));
+  setTimeout(once, 250);
 }
 
 function growAfterPaint(node, property, value) {
-  requestAnimationFrame(() => requestAnimationFrame(() => { node.style[property] = value; }));
+  afterPaint(() => { node.style[property] = value; });
+}
+
+function setRing(id, fraction) {
+  afterPaint(() => $(id).style.setProperty('--pct', String(Math.round(Math.max(0, Math.min(1, fraction)) * 100))));
+}
+
+/* Count a figure up (or down) to its new value. The final text is always set exactly. */
+function countTo(node, target, render, duration = 900) {
+  const from = node._value ?? 0;
+  node._value = target;
+  const token = (node._token = (node._token || 0) + 1);
+  if (reducedMotion() || from === target) {
+    node.textContent = render(target);
+    return;
+  }
+  const start = performance.now();
+  const step = (now) => {
+    if (node._token !== token) return;
+    const t = Math.min(1, (now - start) / duration);
+    node.textContent = render(t < 1 ? from + (target - from) * (1 - (1 - t) ** 3) : target);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  setTimeout(() => { if (node._token === token) node.textContent = render(target); }, duration + 150);
+}
+
+function renderStats(result) {
+  $('stat-action').textContent = ACTION_TITLE[result.best_action];
+  $('stat-action-sub').textContent = result.best_action === 'focused' ? `On Concept ${conceptNumber(result.target_concept)}` : '';
+  countTo($('stat-hours'), result.hours, (value) => hoursText(Math.round(value * 2) / 2));
+  $('stat-session').textContent = result.events.length ? timeRange(result.events[0]) : 'No session';
+  countTo($('stat-pass'), result.posteriors.p_pass * 100, (value) => `${Math.round(value)}%`);
+  countTo($('stat-stress'), result.posteriors.p_stress_high * 100, (value) => `${Math.round(value)}%`);
+  countTo($('stat-days'), result.days_until_exam, (value) => String(Math.round(value)));
+  $('stat-exam').textContent = dateLabel(result.exam_date, { weekday: 'short', month: 'short', day: 'numeric' });
+  setRing('ring-pass', result.posteriors.p_pass);
+  setRing('ring-stress', result.posteriors.p_stress_high);
 }
 
 function renderScores(result) {
@@ -394,11 +475,31 @@ function setTheme(theme, persist) {
   try { localStorage.setItem('theme', theme); } catch { /* storage unavailable */ }
 }
 
+/* The switch reveals the new theme as a circle growing from the switch itself. Browsers without
+   view transitions, and people who prefer reduced motion, get a plain colour fade instead. */
+function toggleTheme() {
+  const root = document.documentElement;
+  const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  if (reducedMotion() || !document.startViewTransition) {
+    root.classList.add('theme-fade');
+    setTheme(next, true);
+    setTimeout(() => root.classList.remove('theme-fade'), 500);
+    return;
+  }
+  const box = $('theme-toggle').getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  const transition = document.startViewTransition(() => setTheme(next, true));
+  transition.ready.then(() => root.animate(
+    { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+    { duration: 650, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' },
+  )).catch(() => {});
+}
+
 function initTheme() {
   setTheme(document.documentElement.dataset.theme, false);
-  $('theme-toggle').addEventListener('click', () => {
-    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
-  });
+  $('theme-toggle').addEventListener('click', toggleTheme);
 }
 
 /* ---------- navigation highlight ---------- */
@@ -463,29 +564,176 @@ async function ensurePlan() {
   if (!plan) await calculate();
 }
 
-function difficultySentence(scenario) {
-  return meta.concepts.map((concept, index) => `Concept ${index + 1} is ${scenario.difficulty[concept]}`).join(', ') + '.';
+const joinList = (items) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`);
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+/* "an 87%", "an 11%", "a 9%": percentages read aloud as eight-, eleven- and eighteen- start with a vowel sound */
+const withArticle = (percent) => `${/^(8|11|18)/.test(percent) ? 'an' : 'a'} ${percent}`;
+
+function difficultyClause(scenario) {
+  const levels = meta.concepts.map((concept) => scenario.difficulty[concept]);
+  if (levels.every((level) => level === levels[0])) return `every concept is ${levels[0]}`;
+  return joinList(meta.concepts.map((concept, index) => `Concept ${index + 1} is ${scenario.difficulty[concept]}`));
 }
 
-function quizSentence(scenario) {
+/* What the practice quizzes say, in words, and what that does to the model's view. */
+function quizReading(scenario) {
   const given = meta.concepts.map((concept, index) => [index + 1, scenario.quiz[concept]]).filter(([, result]) => result);
-  if (!given.length) return 'There are no quiz results yet.';
+  if (!given.length) return { clause: 'no quiz results are in yet', simple: true, effect: 'so for now the model relies on difficulty alone' };
   if (given.length === meta.concepts.length && given.every(([, result]) => result === given[0][1])) {
-    return `All three quizzes came back ${given[0][1]}.`;
+    return {
+      clause: `every practice quiz came back ${given[0][1]}`,
+      simple: true,
+      effect: given[0][1] === 'low' ? 'which pulls those estimates down even further' : 'which lifts those estimates',
+    };
   }
-  const text = given.map(([number, result]) => `the Concept ${number} quiz came back ${result}`).join(', ');
-  return `${text.charAt(0).toUpperCase()}${text.slice(1)}${given.length < meta.concepts.length ? '; the others have no quiz yet' : ''}.`;
+  const partial = given.length < meta.concepts.length;
+  const text = joinList(given.map(([number, result]) => `the Concept ${number} quiz came back ${result}`));
+  const which = given.length === 1 ? 'that concept' : 'those concepts';
+  return {
+    clause: `${text}${partial ? ', and the others have no quiz yet' : ''}`,
+    simple: false,
+    effect: partial ? `so the model adjusts ${which}, while the rest rely on difficulty alone` : 'so the model adjusts each concept to match its quiz',
+  };
+}
+
+function examClause(scenario) {
+  const days = scenario.days_until_exam;
+  if (days === 0) return 'the exam is today';
+  if (days === 1) return 'the exam is only 1 day away';
+  if (days <= 3) return `the exam is only ${days} days away`;
+  if (days > 10) return `the exam is still ${days} days away`;
+  return `the exam is ${days} days away`;
+}
+
+function pressureNote(days) {
+  if (days <= 3) return 'which tends to push stress up';
+  if (days <= 10) return 'so there is some time pressure';
+  return 'so there is less pressure for now';
+}
+
+function sleepSentence(scenario) {
+  if (scenario.sleep === 'poor') return 'Poor sleep last night points to higher stress.';
+  if (scenario.sleep === 'good') return 'Good sleep last night points to lower stress.';
+  return "Sleep isn't recorded, so it plays no part in the estimate.";
+}
+
+const stressWord = (value) => (value >= 0.6 ? 'high' : value <= 0.3 ? 'low' : 'moderate');
+
+function passMeaning(value) {
+  if (value < 0.25) return 'there is a lot of ground to cover';
+  if (value < 0.6) return 'it is a real chance, but far from safe';
+  return 'they are in decent shape';
+}
+
+const masteryList = (posteriors) => joinList(meta.concepts.map((concept, index) => `${pct(posteriors.p_mastery_high[concept])} for Concept ${index + 1}`));
+
+/* The evidence in one or two plain sentences, e.g. "Every concept is hard, and every practice quiz came back low. The exam is only 2 days away." */
+function situationSentence(scenario) {
+  const reading = quizReading(scenario);
+  const difficulty = capitalize(difficultyClause(scenario));
+  const evidence = reading.simple ? `${difficulty}, and ${reading.clause}.` : `${difficulty}. ${capitalize(reading.clause)}.`;
+  return `${evidence} ${capitalize(examClause(scenario))}.`;
+}
+
+/* The summary's wording: the situation, what the scores mean, and what to do next. */
+function summaryParts(scenario, [first, second]) {
+  const post = plan.posteriors;
+  const gap = first[1] - second[1];
+  const situation = `${situationSentence(scenario)} Because of that, the model estimates mastery at ${masteryList(post)}, `
+    + `with ${withArticle(pct(post.p_pass))} chance of passing and ${withArticle(pct(post.p_stress_high))} risk of high stress.`;
+  const meaning = `${ACTION_NAME[first[0]]} scores ${first[1].toFixed(1)}, ahead of ${ACTION_NAME[second[0]].toLowerCase()} at ${second[1].toFixed(1)}, `
+    + `which means ${ACTION_MEANING[first[0]](plan)}.`
+    + (gap < 2 ? ` That said, it is a close call, so ${ACTION_PHRASE[second[0]]} would also be a reasonable choice.` : ' That lead is clear enough to act on.');
+  return { gap, situation, meaning, next: 'The form now shows this student, so change anything and press Calculate to see how the advice shifts.' };
+}
+
+function svgIcon(name) {
+  const svg = svgNode('svg', { class: 'icon' });
+  svg.append(svgNode('use', { href: `#i-${name}` }));
+  return svg;
+}
+
+/* Bold the figures (percentages and one-decimal scores) so the eye lands on them first. */
+function richText(text) {
+  const fragment = document.createDocumentFragment();
+  text.split(/(\b\d+(?:\.\d+)?%|\b\d+\.\d\b)/).forEach((part, index) => {
+    fragment.append(index % 2 ? el('strong', '', part) : document.createTextNode(part));
+  });
+  return fragment;
+}
+
+function gauge(label, value, tone) {
+  const ring = el('span', `ring lg ${tone}`);
+  ring.append(el('span', 'ring-value', pct(value)));
+  afterPaint(() => ring.style.setProperty('--pct', String(Math.round(value * 100))));
+  const wrap = el('div', 'gauge');
+  wrap.append(ring, el('span', 'gauge-label', label));
+  return wrap;
+}
+
+function scoreRows(ranked) {
+  const max = Math.max(...ranked.map(([, value]) => value), 1);
+  const list = el('div', 'score-rows');
+  ranked.forEach(([key, value], index) => {
+    const fill = el('span', 'fill');
+    const track = el('div', 'track');
+    track.append(fill);
+    const row = el('div', index === 0 ? 'score-row is-best' : 'score-row');
+    row.append(el('span', 'score-name', ACTION_NAME[key]), track, el('span', 'score-value', value.toFixed(1)));
+    list.append(row);
+    growAfterPaint(fill, 'width', `${(Math.max(0, value) / max) * 100}%`);
+  });
+  return list;
+}
+
+/* The guided example's closing card: a headline recommendation and short, spaced paragraphs on the
+   left; the numbers as graphics (two gauges, the study time and the four scores) on the right. */
+function summaryView(scenario, ranked) {
+  const parts = summaryParts(scenario, ranked);
+  const best = plan.best_action;
+
+  const icon = el('span', 'summary-icon');
+  icon.append(svgIcon(ACTION_ICON[best]));
+  const head = el('div', 'summary-head');
+  head.append(icon, el('span', 'summary-label', 'Summary'));
+  const title = el('h3', 'summary-title', ACTION_LEAD[best](plan));
+  title.id = 'tour-title';
+
+  const section = (heading, text) => {
+    const wrap = el('section', 'summary-section');
+    const paragraph = el('p');
+    paragraph.append(richText(text));
+    wrap.append(el('h4', '', heading), paragraph);
+    return wrap;
+  };
+  const intro = el('div', 'summary-intro');
+  intro.append(head, title);
+  const body = el('div', 'summary-body');
+  body.append(section('The situation', parts.situation), section('What it means', parts.meaning), el('p', 'summary-next', parts.next));
+
+  const gauges = el('div', 'gauges');
+  gauges.append(gauge('Pass chance', plan.posteriors.p_pass, 'good'), gauge('Stress risk', plan.posteriors.p_stress_high, 'warn'));
+  const time = el('div', 'time-chip');
+  time.append(el('strong', '', hoursText(plan.hours)), el('span', '', plan.events.length ? `${ACTION_NAME[best]} \u00b7 ${timeRange(plan.events[0])}` : 'No session today'));
+  const verdict = el('span', parts.gap < 2 ? 'chip is-close' : 'chip is-clear', `${parts.gap < 2 ? 'Close call' : 'Clear winner'} \u00b7 ${parts.gap.toFixed(1)} points ahead`);
+  const scores = el('div', 'summary-scores');
+  scores.append(el('span', 'visual-label', 'Action scores'), scoreRows(ranked), verdict);
+  const visual = el('aside', 'summary-visual');
+  visual.append(gauges, time, scores);
+
+  const wrap = el('div', 'summary');
+  wrap.append(intro, visual, body);
+  return wrap;
 }
 
 function guideSteps(name) {
   const scenario = scenarios.find((s) => s.name === name);
   const label = PROFILE_LABEL[name];
   const ranked = () => Object.entries(plan.expected_utility).sort((a, b) => b[1] - a[1]);
-  const guided = GUIDED.find((g) => g.name === name);
   return [
     {
       title: label,
-      body: `${scenario.description}\n\nWe will fill in the evidence, run the planner and explain what it decides.`,
+      body: () => `${situationSentence(scenario)}\n\nWe will fill in the evidence, run the planner and talk through what it decides and why.`,
       nextLabel: 'Start',
     },
     {
@@ -495,22 +743,26 @@ function guideSteps(name) {
         applyProfile(name);
         markStale();
       },
-      body: `${label} is selected. That fills in all the evidence below.`,
+      body: `We have loaded the ${label.toLowerCase()} profile, which fills in all of the evidence below.`,
     },
     {
       target: '#concept-fields',
       title: 'Difficulty and quizzes',
-      body: () => `${difficultySentence(scenario)}\n\n${quizSentence(scenario)}`,
+      body: () => {
+        const reading = quizReading(scenario);
+        return `${capitalize(difficultyClause(scenario))}, so the model starts out with a view on how likely each one is to be mastered.\n\n`
+          + `${capitalize(reading.clause)}, ${reading.effect}.`;
+      },
     },
     {
       target: '#context-fields',
       title: 'Sleep and exam date',
-      body: () => `${scenario.sleep ? `Last night's sleep was ${scenario.sleep}.` : 'Sleep is not recorded.'}\n\nThe exam is on ${examDateText(scenario.exam_date)}, ${scenario.days_until_exam} days away.`,
+      body: () => `${sleepSentence(scenario)}\n\n${capitalize(examClause(scenario))} (${examDateText(scenario.exam_date)}), ${pressureNote(scenario.days_until_exam)}.`,
     },
     {
       target: '#calculate',
       title: 'Run the planner',
-      body: 'Calculate asks the model how well each concept is known, how stressed the student is and how likely they are to pass, then scores each study option.',
+      body: 'Now the planner pulls everything together: how well each concept is probably known, how stressed the student is likely to be, and how likely they are to pass. It then scores every study option.',
       nextLabel: 'Calculate',
       after: async () => {
         if (!(await calculate())) tour.close(false);
@@ -520,24 +772,30 @@ function guideSteps(name) {
       target: '#beliefs',
       title: 'What the model believes',
       body: () => {
-        const m = plan.posteriors.p_mastery_high;
-        const mastery = meta.concepts.map((concept, index) => `Concept ${index + 1} ${pct(m[concept])}`).join(', ');
-        return `Mastery: ${mastery}.\n\nStress risk is ${pct(plan.posteriors.p_stress_high)}, and the chance of passing if nothing changes is ${pct(plan.posteriors.p_pass)}.`;
+        const post = plan.posteriors;
+        return `From that evidence, the model estimates mastery at ${masteryList(post)}.\n\n`
+          + `Stress risk comes out ${stressWord(post.p_stress_high)}, at ${pct(post.p_stress_high)}, and the chance of passing if nothing changes is ${pct(post.p_pass)}, which means ${passMeaning(post.p_pass)}.`;
       },
     },
     {
       target: '#scores',
       title: 'Scoring the options',
-      body: () => `${ranked().map(([key, value]) => `${ACTION_NAME[key]} ${value.toFixed(1)}`).join(', ')}.\n\nEach score weighs the chance of passing against stress and takes off one point per study hour. The highest wins.`,
+      body: () => `Each option gets a score that weighs the chance of passing against stress, then takes off a point for every hour of study. Here, ${joinList(ranked().map(([key, value]) => `${ACTION_NAME[key].toLowerCase()} scores ${value.toFixed(1)}`))}.\n\nThe highest score wins, so that is what the planner recommends.`,
     },
     {
       target: '#overview',
       title: 'The decision',
       placement: 'bottom',
       body: () => {
+        const [first, second] = ranked();
+        const gap = first[1] - second[1];
+        const rival = ACTION_PHRASE[second[0]];
         const focus = plan.best_action === 'focused' ? ` on Concept ${conceptNumber(plan.target_concept)}` : '';
-        const when = plan.events.length ? ` It is placed today at ${timeRange(plan.events[0])}.` : ' No study session is scheduled today.';
-        return `Recommended: ${ACTION_PHRASE[plan.best_action]}${focus} (${hoursText(plan.hours)}).${when}`;
+        const when = plan.events.length ? ` It is placed today at ${timeRange(plan.events[0])}.` : ' Nothing is scheduled today.';
+        let margin = `It leads ${rival} by ${gap.toFixed(1)} points, a clear gap.`;
+        if (gap < 2) margin = `It is only ${gap.toFixed(1)} points ahead of ${rival}, so this is a close call, and ${rival} would not be a bad choice either.`;
+        else if (gap < 8) margin = `It leads ${rival} by ${gap.toFixed(1)} points, which is a fairly clear preference.`;
+        return `That makes the recommendation ${ACTION_PHRASE[plan.best_action]}${focus} (${hoursText(plan.hours)}).${when}\n\n${margin}`;
       },
     },
     {
@@ -545,22 +803,12 @@ function guideSteps(name) {
       title: 'On the calendar',
       placement: 'top',
       body: () => (plan.events.length
-        ? "Today's session appears here. Future days stay empty because the planner decides one day at a time."
-        : 'A rest day adds no session. Any planner sessions already on today would be cleared.'),
+        ? "Today's session shows up here, and the other days stay empty because the planner decides one day at a time."
+        : 'A rest day adds nothing to the calendar, and any planner sessions already on today would be cleared.'),
     },
     {
-      title: 'Summary',
-      rows: () => {
-        const [first, second] = ranked();
-        const m = plan.posteriors.p_mastery_high;
-        return [
-          ['Student', scenario.description],
-          ['Beliefs', `Mastery ${meta.concepts.map((concept) => pct(m[concept])).join(' / ')}; stress risk ${pct(plan.posteriors.p_stress_high)}; pass chance ${pct(plan.posteriors.p_pass)}`],
-          ['Decision', `${ACTION_NAME[plan.best_action]} (${hoursText(plan.hours)})`],
-          ['Why', `${ACTION_NAME[first[0]]} scores ${first[1].toFixed(1)}, ahead of ${ACTION_NAME[second[0]]} at ${second[1].toFixed(1)}.`],
-        ];
-      },
-      body: () => `${plan.best_action === scenario.expected_action ? `${guided.takeaway}\n\n` : ''}The form now shows this student. Change anything and press Calculate to explore.`,
+      view: () => summaryView(scenario, ranked()),
+      nextLabel: 'Done',
       extra: { label: 'Replay', onClick: () => startGuide(name) },
     },
   ];
@@ -583,7 +831,7 @@ function initHelp() {
   const menu = $('help-menu');
   const items = () => [...menu.querySelectorAll('.menu-item')];
 
-  GUIDED.forEach(({ name }) => {
+  GUIDED.forEach((name) => {
     const scenario = scenarios.find((s) => s.name === name);
     if (!scenario) return;
     const item = el('button', 'menu-item');
@@ -641,6 +889,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   $('plan-form').addEventListener('submit', (event) => { event.preventDefault(); calculate(); });
   $('plan-form').addEventListener('change', (event) => {
+    if (event.target.matches('.segmented input')) placeThumb(event.target.closest('.segmented'));
     if (event.target.id === 'profile') applyProfile(event.target.value);
     else if (event.target.name !== 'model') $('profile').value = '';
     markStale();
@@ -651,6 +900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('today-label').textContent = dateLabel(meta.today, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     $('today-label').dateTime = meta.today;
     buildForm();
+    initSegmented();
     applyProfile('one_weak_spot');
     $('calculate').disabled = false;
     initScrollSpy();

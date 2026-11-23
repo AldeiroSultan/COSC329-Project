@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -19,6 +19,19 @@ from study_planner.planner import StudyPlanner
 from study_planner.scenarios import SCENARIOS
 
 app = FastAPI(title="Bayesian Study Planner")
+
+
+@app.middleware("http")
+async def revalidate_static_files(request: Request, call_next):
+    """Make browsers re-check the page, scripts and styles on every load.
+
+    Without this, a browser may keep serving an old script or stylesheet for hours after the
+    code changes, which mixes a new page with old code. Unchanged files still answer 304.
+    """
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 def get_today() -> date:

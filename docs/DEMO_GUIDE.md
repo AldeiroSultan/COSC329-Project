@@ -6,7 +6,7 @@ Suggested length: 4-5 minutes. This is a recording outline, not a claim that a r
 
 - Open the repository root containing `requirements.txt` in VS Code.
 - Activate `.venv`, or use `.\.venv\Scripts\python.exe` instead of `python` below.
-- Run `python -m pytest -q`. The current result is 167 passing tests.
+- Run `python -m pytest -q`. The current result is 179 passing tests.
 - Run `python -m study_planner.cli serve --port 8018`, then open http://127.0.0.1:8018 in a browser. Leave this terminal running.
 - Keep a second terminal for the CLI demo. Do not display credential or token files.
 - Use the offline `.ics` demonstration unless you intend to change your live calendar. The Google commands below replace today's planner-tagged sessions.

@@ -16,8 +16,11 @@
       document.documentElement.dataset.theme = theme;
     })();
   </script>
-  <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300..700&display=swap">
+  <link rel="stylesheet" href="/styles.css?v=8">
+  <script type="module" src="/app.js?v=8"></script>
 </head>
 <body>
 <svg class="sprite" aria-hidden="true" focusable="false">
@@ -35,6 +38,9 @@
   <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19c3-5 6-8 10-10"/></symbol>
   <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></symbol>
 </svg>
 
@@ -86,28 +92,38 @@
       <p id="status" class="sr-only" role="status" aria-live="polite"></p>
 
       <section id="overview" class="stats" aria-label="Today's plan">
-        <article class="card stat stat-action">
-          <strong id="stat-action">&mdash;</strong>
-          <span>Recommended</span>
-          <small id="stat-action-sub"></small>
+        <article class="card hero">
+          <div class="hero-main">
+            <span class="eyebrow">Recommended today</span>
+            <strong id="stat-action" class="hero-title">&mdash;</strong>
+            <small id="stat-action-sub"></small>
+          </div>
+          <div class="hero-time">
+            <strong id="stat-hours">&mdash;</strong>
+            <span>Study time</span>
+            <small id="stat-session"></small>
+          </div>
         </article>
-        <article class="card stat">
-          <strong id="stat-hours">&mdash;</strong>
-          <span>Study time</span>
-          <small id="stat-session"></small>
+        <article class="card stat stat-gauge">
+          <div class="stat-body">
+            <strong id="stat-pass">&mdash;</strong>
+            <span>Pass chance</span>
+          </div>
+          <span class="ring" id="ring-pass" aria-hidden="true"></span>
         </article>
-        <article class="card stat">
-          <strong id="stat-pass">&mdash;</strong>
-          <span>Pass chance</span>
+        <article class="card stat stat-gauge stat-warn">
+          <div class="stat-body">
+            <strong id="stat-stress">&mdash;</strong>
+            <span>Stress risk</span>
+          </div>
+          <span class="ring" id="ring-stress" aria-hidden="true"></span>
         </article>
-        <article class="card stat">
-          <strong id="stat-stress">&mdash;</strong>
-          <span>Stress risk</span>
-        </article>
-        <article class="card stat">
-          <strong id="stat-days">&mdash;</strong>
-          <span>Days to exam</span>
-          <small id="stat-exam"></small>
+        <article class="card stat stat-days">
+          <div class="stat-body">
+            <strong id="stat-days">&mdash;</strong>
+            <span>Days to exam</span>
+            <small id="stat-exam"></small>
+          </div>
         </article>
       </section>
 

@@ -134,8 +134,8 @@ Each spec is what "done" means. Claude reads this section when you ask it to do 
   toggle that uses SVG icons; no emoji, no external libraries, no explanatory captions.
 * Spotlight tour (`web/tour.js`): first-visit app walkthrough, and a **?** menu with three guided
   examples (struggling, well-prepared, one weak concept) that fill in the form, calculate and end
-  with a generated summary.
-* `tests/test_dashboard_assets.py` (15 tests, 167 total); README, REPORT §7–8, DASHBOARD.md updated.
+  with a designed summary card (headline, gauges, score bars).
+* `tests/test_dashboard_assets.py` (27 tests, 179 total); README, REPORT §7–8, DASHBOARD.md updated.
 
 ---
 

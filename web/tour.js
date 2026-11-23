@@ -3,9 +3,11 @@
 
    step = {
      target:   CSS selector, element or function returning one (omit for a centred card),
-     title:    string,
+     title:    string or function returning one,
      body:     string (blank lines split paragraphs) or function returning one,
-     rows:     optional function returning [[label, value], ...] (summary list),
+     label:    optional small heading above the title (default "Step n of N"),
+     view:     optional function returning a DOM node that replaces the whole text area
+               (title, body and label are then ignored); makes the card wide,
      before:   optional async hook run before the step is shown,
      after:    optional async hook run when the user presses Next,
      placement: optional preferred side: right | left | bottom | top,
@@ -182,21 +184,16 @@ export class Tour {
 
   render(step, index) {
     const total = this.steps.length;
-    this.stepLabel.textContent = step.rows ? 'Summary' : `Step ${index + 1} of ${total}`;
-    this.titleEl.textContent = step.title;
-    const raw = typeof step.body === 'function' ? step.body() : step.body || '';
-    const paragraphs = String(raw).split(/\n\s*\n/).filter(Boolean).map((text) => node('p', '', text));
-    const rows = step.rows ? step.rows() : null;
-    if (rows) {
-      const list = node('dl', 'tour-rows');
-      rows.forEach(([label, value]) => {
-        const row = node('div');
-        row.append(node('dt', '', label), node('dd', '', value));
-        list.append(row);
-      });
-      this.bodyEl.replaceChildren(list, ...paragraphs);
+    this.card.classList.toggle('is-view', Boolean(step.view));
+    this.progress.hidden = Boolean(step.view);
+    if (step.view) {
+      this.text.replaceChildren(step.view());
     } else {
-      this.bodyEl.replaceChildren(...paragraphs);
+      this.stepLabel.textContent = step.label || `Step ${index + 1} of ${total}`;
+      this.titleEl.textContent = typeof step.title === 'function' ? step.title() : step.title;
+      const raw = typeof step.body === 'function' ? step.body() : step.body || '';
+      this.bodyEl.replaceChildren(...String(raw).split(/\n\s*\n/).filter(Boolean).map((text) => node('p', '', text)));
+      this.text.replaceChildren(this.stepLabel, this.titleEl, this.bodyEl);
     }
     this.progressBar.style.width = `${((index + 1) / total) * 100}%`;
     this.backBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
